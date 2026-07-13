@@ -456,11 +456,15 @@
     btn.disabled = true;
     $('#btn-salvar-texto').textContent = 'Salvando…';
 
+    // Captura ANTES de mostrarHome(), que zera Estado.editandoId.
+    // Sem isso, o toast de edição exibia "Cadastro realizado" por engano.
+    const ehEdicao = !!Estado.editandoId;
+
     try {
       let resposta;
-      if (Estado.editandoId) {
+      if (ehEdicao) {
         resposta = await servidor('updateRecord', Object.assign({ id: Estado.editandoId }, dados));
-        const indice = Estado.registros.findIndex(r => r.id === Estado.editandoId);
+        const indice = Estado.registros.findIndex(r => r.id === resposta.registro.id);
         if (indice !== -1) Estado.registros[indice] = resposta.registro;
       } else {
         resposta = await servidor('createRecord', dados);
@@ -470,14 +474,13 @@
       atualizarCategorias();
       renderizar();
       mostrarHome();
-      toast(Estado.editandoId ? 'Alterações salvas com sucesso.' : 'Cadastro realizado com sucesso.');
-      Estado.editandoId = null;
+      toast(ehEdicao ? 'Alterações salvas com sucesso.' : 'Cadastro realizado com sucesso.');
     } catch (erro) {
       toast(erro.message, 'erro');
     } finally {
       Estado.salvando = false;
       btn.disabled = false;
-      $('#btn-salvar-texto').textContent = Estado.editandoId ? 'Salvar alterações' : 'Salvar';
+      $('#btn-salvar-texto').textContent = ehEdicao ? 'Salvar alterações' : 'Salvar';
     }
   }
 

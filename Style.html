@@ -66,6 +66,15 @@ html[data-theme="dark"] {
 /* ---------- Reset e base ---------- */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+/*
+ * CORREÇÃO IMPORTANTE: o atributo hidden é aplicado pelo navegador
+ * como "display: none" via estilo padrão (UA stylesheet), mas qualquer
+ * regra do autor (ex.: .modal-overlay { display: grid }) tem prioridade
+ * sobre ele. Sem esta regra, o modal, o skeleton e o estado vazio
+ * NUNCA desaparecem da tela ("travamento" do modal de exclusão).
+ */
+[hidden] { display: none !important; }
+
 html { -webkit-text-size-adjust: 100%; }
 
 body {
