@@ -1,0 +1,594 @@
+<script>
+/* ============================================================
+   BASE DE CONHECIMENTO — Script.html
+   Lógica do cliente: cache em memória, pesquisa em tempo real,
+   CRUD via google.script.run, temas, favoritos e atalhos.
+   ============================================================ */
+(() => {
+  'use strict';
+
+  /* ----------------------------------------------------------
+   * Constantes e estado
+   * -------------------------------------------------------- */
+  const TEMAS = [
+    { id: 'portobank', nome: 'PortoBank' },
+    { id: 'rosa',      nome: 'Rosa' },
+    { id: 'dark',      nome: 'Dark' }
+  ];
+
+  const LIMITE_TEXTO_CURTO = 320; // acima disso o card ganha "Ver mais"
+
+  const Estado = {
+    registros: [],            // cache local — carregado uma única vez
+    carregado: false,
+    filtroTipo: 'TODOS',      // TODOS | FAQ | TAB
+    filtroCategoria: '',
+    busca: '',
+    favoritos: new Set(),
+    expandidos: new Set(),    // IDs com texto expandido
+    editandoId: null,         // ID em edição (null = novo cadastro)
+    tipoForm: 'FAQ',
+    salvando: false,
+    confirmarAcao: null       // callback do modal de confirmação
+  };
+
+  const $ = (sel) => document.querySelector(sel);
+  const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+  /* ----------------------------------------------------------
+   * Utilitários
+   * -------------------------------------------------------- */
+
+  /** Escapa HTML para exibição segura. */
+  function escaparHtml(texto) {
+    return String(texto)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  /** Remove acentos preservando o tamanho da string (para busca). */
+  function normalizar(texto) {
+    return String(texto)
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+  }
+
+  /**
+   * Destaca as ocorrências do termo pesquisado (sem diferenciar
+   * acentos/maiúsculas), escapando o HTML do texto original.
+   */
+  function destacar(texto, termo) {
+    const original = String(texto);
+    if (!termo) return escaparHtml(original);
+
+    // Normaliza caractere a caractere para manter os índices alinhados.
+    const base = Array.from(original)
+      .map(c => {
+        const n = c.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        return n.length === 1 ? n : c.toLowerCase();
+      })
+      .join('');
+
+    const alvo = normalizar(termo);
+    const partes = [];
+    let pos = 0;
+
+    while (pos < original.length) {
+      const achou = base.indexOf(alvo, pos);
+      if (achou === -1) {
+        partes.push(escaparHtml(original.slice(pos)));
+        break;
+      }
+      partes.push(escaparHtml(original.slice(pos, achou)));
+      partes.push('<mark>' + escaparHtml(original.slice(achou, achou + alvo.length)) + '</mark>');
+      pos = achou + alvo.length;
+    }
+
+    return partes.join('');
+  }
+
+  /** Converte "dd/MM/yyyy HH:mm" em timestamp para ordenação. */
+  function tempoDe(dataBr) {
+    if (!dataBr) return 0;
+    const [data, hora] = String(dataBr).split(' ');
+    const [dia, mes, ano] = (data || '').split('/').map(Number);
+    const [hh, mm] = (hora || '0:0').split(':').map(Number);
+    if (!ano) return 0;
+    return new Date(ano, (mes || 1) - 1, dia || 1, hh || 0, mm || 0).getTime();
+  }
+
+  /** Exibe um toast temporário. */
+  function toast(mensagem, tipo) {
+    const el = document.createElement('div');
+    el.className = 'toast' + (tipo === 'erro' ? ' erro' : '');
+    el.textContent = mensagem;
+    $('#toasts').appendChild(el);
+    setTimeout(() => {
+      el.classList.add('saindo');
+      setTimeout(() => el.remove(), 260);
+    }, 2600);
+  }
+
+  /** Executa uma função do servidor retornando Promise. */
+  function servidor(funcao, ...args) {
+    return new Promise((resolver, rejeitar) => {
+      google.script.run
+        .withSuccessHandler(resolver)
+        .withFailureHandler(err => rejeitar(new Error(err && err.message ? err.message : 'Erro no servidor.')))
+        [funcao](...args);
+    });
+  }
+
+  /* ----------------------------------------------------------
+   * Persistência local (tema e favoritos)
+   * -------------------------------------------------------- */
+
+  function carregarPreferencias() {
+    try {
+      const tema = localStorage.getItem('bc_tema');
+      if (tema && TEMAS.some(t => t.id === tema)) aplicarTema(tema, false);
+      else aplicarTema('portobank', false);
+
+      const favs = JSON.parse(localStorage.getItem('bc_favoritos') || '[]');
+      Estado.favoritos = new Set(favs);
+    } catch (e) {
+      aplicarTema('portobank', false);
+    }
+  }
+
+  function salvarFavoritos() {
+    try {
+      localStorage.setItem('bc_favoritos', JSON.stringify([...Estado.favoritos]));
+    } catch (e) { /* armazenamento indisponível — ignora */ }
+  }
+
+  function aplicarTema(id, notificar) {
+    document.documentElement.setAttribute('data-theme', id);
+    try { localStorage.setItem('bc_tema', id); } catch (e) { /* ignora */ }
+    const tema = TEMAS.find(t => t.id === id);
+    $('#tema-nome').textContent = tema ? tema.nome : 'Tema';
+    if (notificar) toast('Tema ' + tema.nome + ' aplicado.');
+  }
+
+  function alternarTema() {
+    const atual = document.documentElement.getAttribute('data-theme') || 'portobank';
+    const indice = TEMAS.findIndex(t => t.id === atual);
+    aplicarTema(TEMAS[(indice + 1) % TEMAS.length].id, true);
+  }
+
+  /* ----------------------------------------------------------
+   * Carregamento de dados (uma única chamada ao servidor)
+   * -------------------------------------------------------- */
+
+  async function carregarRegistros() {
+    try {
+      const resposta = await servidor('getAllRecords');
+      Estado.registros = resposta.registros || [];
+      Estado.carregado = true;
+      $('#skeleton').hidden = true;
+      atualizarCategorias();
+      renderizar();
+    } catch (erro) {
+      $('#skeleton').hidden = true;
+      $('#estado-vazio').hidden = false;
+      $('#vazio-titulo').textContent = 'Não foi possível carregar os dados';
+      $('#vazio-texto').textContent = erro.message + ' Recarregue a página para tentar novamente.';
+      toast('Erro ao carregar registros.', 'erro');
+    }
+  }
+
+  /* ----------------------------------------------------------
+   * Filtros, pesquisa e renderização
+   * -------------------------------------------------------- */
+
+  /** Popula o select de categorias com valores únicos do cache. */
+  function atualizarCategorias() {
+    const categorias = [...new Set(Estado.registros.map(r => r.categoria).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+    const select = $('#filtro-categoria');
+    const valorAtual = select.value;
+    select.innerHTML = '<option value="">Todas as categorias</option>' +
+      categorias.map(c => `<option value="${escaparHtml(c)}">${escaparHtml(c)}</option>`).join('');
+    if (categorias.includes(valorAtual)) select.value = valorAtual;
+
+    // Datalist do formulário (sugestões de categoria).
+    $('#lista-categorias').innerHTML =
+      categorias.map(c => `<option value="${escaparHtml(c)}">`).join('');
+  }
+
+  /** Aplica filtros e busca sobre o cache local. */
+  function filtrar() {
+    const termo = normalizar(Estado.busca.trim());
+
+    return Estado.registros.filter(r => {
+      if (Estado.filtroTipo !== 'TODOS' && r.tipo !== Estado.filtroTipo) return false;
+      if (Estado.filtroCategoria && r.categoria !== Estado.filtroCategoria) return false;
+      if (!termo) return true;
+
+      return normalizar(r.categoria).includes(termo) ||
+             normalizar(r.descricao).includes(termo) ||
+             normalizar(r.texto).includes(termo) ||
+             normalizar(r.criadoPor).includes(termo);
+    });
+  }
+
+  /** Ordena: favoritos primeiro, depois data de criação decrescente. */
+  function ordenar(lista) {
+    return lista.sort((a, b) => {
+      const favA = Estado.favoritos.has(a.id) ? 1 : 0;
+      const favB = Estado.favoritos.has(b.id) ? 1 : 0;
+      if (favA !== favB) return favB - favA;
+      return tempoDe(b.dataCriacao) - tempoDe(a.dataCriacao);
+    });
+  }
+
+  /** Monta o HTML de um card de registro. */
+  function htmlCard(r) {
+    const termo = Estado.busca.trim();
+    const favorito = Estado.favoritos.has(r.id);
+    const longo = r.texto.length > LIMITE_TEXTO_CURTO;
+    const expandido = Estado.expandidos.has(r.id);
+    const editado = r.ultimaAlteracao && r.ultimaAlteracao !== r.dataCriacao;
+    const rotuloTipo = r.tipo === 'FAQ' ? 'FAQ' : 'Tabulação';
+
+    return `
+      <article class="card tipo-${r.tipo}" data-id="${r.id}">
+        <div class="card-topo">
+          <span class="badge badge-${r.tipo}">${rotuloTipo}</span>
+          <span class="card-categoria" title="${escaparHtml(r.categoria)}">${destacar(r.categoria, termo)}</span>
+          <button class="btn-favorito ${favorito ? 'ativo' : ''}" data-acao="favoritar"
+                  title="${favorito ? 'Remover dos favoritos' : 'Favoritar'}">${favorito ? '⭐' : '☆'}</button>
+        </div>
+
+        <h3 class="card-descricao">${destacar(r.descricao, termo)}</h3>
+
+        <div class="card-texto ${longo && !expandido ? 'recolhido' : ''}">${destacar(r.texto, termo)}</div>
+        ${longo ? `<button class="btn-expandir" data-acao="expandir">${expandido ? 'Ver menos ▲' : 'Ver mais ▼'}</button>` : ''}
+
+        <div class="card-rodape">
+          <div class="card-meta">
+            <span title="${escaparHtml(r.criadoPor)}">👤 ${destacar(r.criadoPor, termo)}</span>
+            <span>🕐 ${escaparHtml(r.dataCriacao)}${editado ? ' · editado em ' + escaparHtml(r.ultimaAlteracao) : ''}</span>
+          </div>
+          <div class="card-acoes">
+            <button class="btn-copiar" data-acao="copiar" title="Copiar texto">📋 Copiar</button>
+            <button class="btn-icone" data-acao="editar" title="Editar">✏️</button>
+            <button class="btn-icone" data-acao="imprimir" title="Imprimir / PDF">🖨️</button>
+            <button class="btn-icone" data-acao="excluir" title="Excluir">🗑️</button>
+          </div>
+        </div>
+      </article>`;
+  }
+
+  /** Renderiza a lista completa e os contadores. */
+  function renderizar() {
+    if (!Estado.carregado) return;
+
+    const resultados = ordenar(filtrar());
+    const lista = $('#lista-cards');
+    const vazio = $('#estado-vazio');
+
+    // Contadores gerais (independem dos filtros).
+    $('#qtd-faq').textContent = Estado.registros.filter(r => r.tipo === 'FAQ').length;
+    $('#qtd-tab').textContent = Estado.registros.filter(r => r.tipo === 'TAB').length;
+
+    // Contador de resultados (só aparece quando há filtro/busca ativa).
+    const filtrando = Estado.busca.trim() || Estado.filtroTipo !== 'TODOS' || Estado.filtroCategoria;
+    $('#sep-resultados').hidden = !filtrando;
+    $('#qtd-resultados').hidden = !filtrando;
+    if (filtrando) {
+      $('#qtd-resultados').textContent = resultados.length + ' resultado' + (resultados.length === 1 ? '' : 's');
+    }
+
+    if (!resultados.length) {
+      lista.hidden = true;
+      vazio.hidden = false;
+      $('#vazio-titulo').textContent = Estado.registros.length
+        ? 'Nenhum resultado para os filtros atuais'
+        : 'A base ainda está vazia';
+      $('#vazio-texto').textContent = Estado.registros.length
+        ? 'Tente outro termo ou limpe os filtros.'
+        : 'Cadastre a primeira FAQ ou Tabulação para começar.';
+      return;
+    }
+
+    vazio.hidden = true;
+    lista.hidden = false;
+    lista.innerHTML = resultados.map(htmlCard).join('');
+  }
+
+  /* ----------------------------------------------------------
+   * Ações dos cards
+   * -------------------------------------------------------- */
+
+  async function copiarTexto(registro) {
+    const texto = registro.texto;
+    try {
+      await navigator.clipboard.writeText(texto);
+    } catch (e) {
+      // Fallback para navegadores/iframes sem Clipboard API.
+      const ta = document.createElement('textarea');
+      ta.value = texto;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      try { document.execCommand('copy'); } finally { ta.remove(); }
+    }
+    toast('Texto copiado com sucesso.');
+  }
+
+  function alternarFavorito(id) {
+    if (Estado.favoritos.has(id)) Estado.favoritos.delete(id);
+    else Estado.favoritos.add(id);
+    salvarFavoritos();
+    renderizar();
+  }
+
+  function alternarExpandido(id) {
+    if (Estado.expandidos.has(id)) Estado.expandidos.delete(id);
+    else Estado.expandidos.add(id);
+    renderizar();
+  }
+
+  function imprimirRegistro(r) {
+    const rotulo = r.tipo === 'FAQ' ? 'FAQ' : 'Tabulação';
+    $('#print-area').innerHTML = `
+      <h1>${escaparHtml(r.descricao)}</h1>
+      <div class="print-meta">
+        ${rotulo} · ${escaparHtml(r.categoria)} · ${escaparHtml(r.id)}<br>
+        Criado por ${escaparHtml(r.criadoPor)} em ${escaparHtml(r.dataCriacao)}
+        ${r.ultimaAlteracao !== r.dataCriacao ? ' · Última alteração: ' + escaparHtml(r.ultimaAlteracao) : ''}
+      </div>
+      <div class="print-texto">${escaparHtml(r.texto)}</div>`;
+    window.print();
+  }
+
+  function pedirExclusao(registro) {
+    $('#modal-mensagem').textContent =
+      `Tem certeza que deseja excluir "${registro.descricao}" (${registro.id})? Esta ação não pode ser desfeita.`;
+    Estado.confirmarAcao = async () => {
+      try {
+        await servidor('deleteRecord', registro.id);
+        Estado.registros = Estado.registros.filter(r => r.id !== registro.id);
+        Estado.favoritos.delete(registro.id);
+        salvarFavoritos();
+        atualizarCategorias();
+        renderizar();
+        toast('Registro excluído.');
+      } catch (erro) {
+        toast(erro.message, 'erro');
+      }
+    };
+    $('#modal-confirmar').hidden = false;
+  }
+
+  function fecharModal() {
+    $('#modal-confirmar').hidden = true;
+    Estado.confirmarAcao = null;
+  }
+
+  /* ----------------------------------------------------------
+   * Navegação entre telas
+   * -------------------------------------------------------- */
+
+  function mostrarHome() {
+    $('#view-cadastro').hidden = true;
+    $('#view-home').hidden = false;
+    Estado.editandoId = null;
+  }
+
+  function abrirCadastro(registro) {
+    Estado.editandoId = registro ? registro.id : null;
+
+    $('#form-titulo').textContent = registro ? 'Editar Registro' : 'Novo Cadastro';
+    $('#form-subtitulo').textContent = registro
+      ? 'Editando ' + registro.id + '. O tipo não pode ser alterado.'
+      : 'Preencha os campos abaixo para adicionar um novo conteúdo à base.';
+    $('#btn-salvar-texto').textContent = registro ? 'Salvar alterações' : 'Salvar';
+
+    definirTipoForm(registro ? registro.tipo : 'FAQ');
+    $('#seg-tipo').classList.toggle('bloqueado', !!registro);
+
+    $('#campo-categoria').value = registro ? registro.categoria : '';
+    $('#campo-descricao').value = registro ? registro.descricao : '';
+    $('#campo-texto').value = registro ? registro.texto : '';
+    atualizarContagemTexto();
+    limparInvalidos();
+
+    $('#view-home').hidden = true;
+    $('#view-cadastro').hidden = false;
+    $('#campo-categoria').focus();
+    window.scrollTo({ top: 0 });
+  }
+
+  function definirTipoForm(tipo) {
+    Estado.tipoForm = tipo;
+    $$('#seg-tipo .seg-opcao').forEach(btn => {
+      btn.classList.toggle('ativo', btn.dataset.tipo === tipo);
+    });
+  }
+
+  function atualizarContagemTexto() {
+    $('#contagem-texto').textContent = $('#campo-texto').value.length;
+  }
+
+  function limparInvalidos() {
+    $$('.invalido').forEach(el => el.classList.remove('invalido'));
+  }
+
+  /* ----------------------------------------------------------
+   * Salvamento (criação e edição)
+   * -------------------------------------------------------- */
+
+  async function salvar() {
+    if (Estado.salvando) return;
+
+    const dados = {
+      tipo: Estado.tipoForm,
+      categoria: $('#campo-categoria').value.trim(),
+      descricao: $('#campo-descricao').value.trim(),
+      texto: $('#campo-texto').value.trim()
+    };
+
+    // Validação simples no cliente com destaque visual.
+    limparInvalidos();
+    let invalido = null;
+    if (!dados.categoria) invalido = '#campo-categoria';
+    else if (!dados.descricao) invalido = '#campo-descricao';
+    else if (!dados.texto) invalido = '#campo-texto';
+
+    if (invalido) {
+      $(invalido).classList.add('invalido');
+      $(invalido).focus();
+      toast('Preencha todos os campos.', 'erro');
+      return;
+    }
+
+    Estado.salvando = true;
+    const btn = $('#btn-salvar');
+    btn.disabled = true;
+    $('#btn-salvar-texto').textContent = 'Salvando…';
+
+    try {
+      let resposta;
+      if (Estado.editandoId) {
+        resposta = await servidor('updateRecord', Object.assign({ id: Estado.editandoId }, dados));
+        const indice = Estado.registros.findIndex(r => r.id === Estado.editandoId);
+        if (indice !== -1) Estado.registros[indice] = resposta.registro;
+      } else {
+        resposta = await servidor('createRecord', dados);
+        Estado.registros.push(resposta.registro);
+      }
+
+      atualizarCategorias();
+      renderizar();
+      mostrarHome();
+      toast(Estado.editandoId ? 'Alterações salvas com sucesso.' : 'Cadastro realizado com sucesso.');
+      Estado.editandoId = null;
+    } catch (erro) {
+      toast(erro.message, 'erro');
+    } finally {
+      Estado.salvando = false;
+      btn.disabled = false;
+      $('#btn-salvar-texto').textContent = Estado.editandoId ? 'Salvar alterações' : 'Salvar';
+    }
+  }
+
+  /* ----------------------------------------------------------
+   * Eventos
+   * -------------------------------------------------------- */
+
+  function registrarEventos() {
+    // Navegação
+    $('#btn-home').addEventListener('click', mostrarHome);
+    $('#btn-nav-home').addEventListener('click', mostrarHome);
+    $('#btn-novo').addEventListener('click', () => abrirCadastro(null));
+    $('#btn-vazio-novo').addEventListener('click', () => abrirCadastro(null));
+    $('#btn-tema').addEventListener('click', alternarTema);
+    $('#btn-cancelar').addEventListener('click', mostrarHome);
+    $('#btn-salvar').addEventListener('click', salvar);
+
+    // Pesquisa em tempo real (debounce curto para fluidez).
+    let temporizador = null;
+    $('#campo-pesquisa').addEventListener('input', (e) => {
+      clearTimeout(temporizador);
+      temporizador = setTimeout(() => {
+        Estado.busca = e.target.value;
+        renderizar();
+      }, 120);
+    });
+
+    // Filtros rápidos por tipo.
+    $$('.chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        $$('.chip').forEach(c => c.classList.remove('ativo'));
+        chip.classList.add('ativo');
+        Estado.filtroTipo = chip.dataset.filtro;
+        renderizar();
+      });
+    });
+
+    // Filtro por categoria.
+    $('#filtro-categoria').addEventListener('change', (e) => {
+      Estado.filtroCategoria = e.target.value;
+      renderizar();
+    });
+
+    // Tipo no formulário (bloqueado durante edição).
+    $$('#seg-tipo .seg-opcao').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (Estado.editandoId) return;
+        definirTipoForm(btn.dataset.tipo);
+      });
+    });
+
+    // Contador de caracteres do texto.
+    $('#campo-texto').addEventListener('input', atualizarContagemTexto);
+
+    // Delegação de eventos dos cards.
+    $('#lista-cards').addEventListener('click', (e) => {
+      const botao = e.target.closest('[data-acao]');
+      if (!botao) return;
+
+      const card = botao.closest('.card');
+      const registro = Estado.registros.find(r => r.id === card.dataset.id);
+      if (!registro) return;
+
+      switch (botao.dataset.acao) {
+        case 'copiar':    copiarTexto(registro); break;
+        case 'favoritar': alternarFavorito(registro.id); break;
+        case 'expandir':  alternarExpandido(registro.id); break;
+        case 'editar':    abrirCadastro(registro); break;
+        case 'imprimir':  imprimirRegistro(registro); break;
+        case 'excluir':   pedirExclusao(registro); break;
+      }
+    });
+
+    // Modal de confirmação.
+    $('#modal-cancelar').addEventListener('click', fecharModal);
+    $('#modal-confirmar-btn').addEventListener('click', () => {
+      const acao = Estado.confirmarAcao;
+      fecharModal();
+      if (acao) acao();
+    });
+    $('#modal-confirmar').addEventListener('click', (e) => {
+      if (e.target === $('#modal-confirmar')) fecharModal();
+    });
+
+    // Atalhos de teclado.
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        mostrarHome();
+        $('#campo-pesquisa').focus();
+        $('#campo-pesquisa').select();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        abrirCadastro(null);
+      }
+      if (e.key === 'Escape') {
+        if (!$('#modal-confirmar').hidden) fecharModal();
+        else if (!$('#view-cadastro').hidden) mostrarHome();
+      }
+    });
+  }
+
+  /* ----------------------------------------------------------
+   * Inicialização
+   * -------------------------------------------------------- */
+
+  document.addEventListener('DOMContentLoaded', () => {
+    carregarPreferencias();
+    registrarEventos();
+    carregarRegistros();
+  });
+})();
+</script>

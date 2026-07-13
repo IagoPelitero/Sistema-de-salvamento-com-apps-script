@@ -1,0 +1,62 @@
+<!-- ============================================================
+     CADASTRO — Tela de cadastro/edição de FAQ e Tabulação
+     ============================================================ -->
+<section id="view-cadastro" hidden>
+
+  <div class="painel-form">
+    <h2 id="form-titulo">Novo Cadastro</h2>
+    <p class="form-subtitulo" id="form-subtitulo">Preencha os campos abaixo para adicionar um novo conteúdo à base.</p>
+
+    <!-- Tipo -->
+    <div class="grupo-campo">
+      <label class="rotulo">Tipo</label>
+      <div class="segmentado" id="seg-tipo">
+        <button type="button" class="seg-opcao ativo" data-tipo="FAQ">FAQ</button>
+        <button type="button" class="seg-opcao" data-tipo="TAB">Tabulação</button>
+      </div>
+    </div>
+
+    <!-- Categoria -->
+    <div class="grupo-campo">
+      <label class="rotulo" for="campo-categoria">Categoria</label>
+      <input
+        type="text"
+        id="campo-categoria"
+        list="lista-categorias"
+        placeholder="Ex.: Cartão, Conta, Cancelamento…"
+        maxlength="80"
+        autocomplete="off">
+      <datalist id="lista-categorias"></datalist>
+    </div>
+
+    <!-- Descrição / Cenário -->
+    <div class="grupo-campo">
+      <label class="rotulo" for="campo-descricao">Descrição / Cenário</label>
+      <input
+        type="text"
+        id="campo-descricao"
+        placeholder="Quando este conteúdo deve ser usado?"
+        maxlength="200"
+        autocomplete="off">
+    </div>
+
+    <!-- Texto -->
+    <div class="grupo-campo">
+      <label class="rotulo" for="campo-texto">Texto</label>
+      <textarea
+        id="campo-texto"
+        rows="8"
+        placeholder="Texto completo que será copiado pelo atendente…"></textarea>
+      <span class="dica-campo"><span id="contagem-texto">0</span> caracteres</span>
+    </div>
+
+    <!-- Ações -->
+    <div class="form-acoes">
+      <button type="button" class="btn btn-ghost" id="btn-cancelar">Cancelar</button>
+      <button type="button" class="btn btn-primario" id="btn-salvar">
+        <span id="btn-salvar-texto">Salvar</span>
+      </button>
+    </div>
+  </div>
+
+</section>

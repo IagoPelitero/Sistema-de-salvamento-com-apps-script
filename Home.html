@@ -1,0 +1,62 @@
+<!-- ============================================================
+     HOME — Tela principal: pesquisa, filtros e lista de cards
+     ============================================================ -->
+<section id="view-home">
+
+  <!-- Barra de pesquisa e filtros -->
+  <div class="painel-busca">
+    <div class="campo-busca">
+      <span class="icone-busca">🔍</span>
+      <input
+        type="search"
+        id="campo-pesquisa"
+        placeholder="Pesquisar por categoria, descrição, texto ou autor…"
+        autocomplete="off"
+        spellcheck="false">
+      <kbd class="so-desktop">Ctrl K</kbd>
+    </div>
+
+    <div class="linha-filtros">
+      <!-- Filtros rápidos por tipo -->
+      <div class="chips" role="tablist" aria-label="Filtrar por tipo">
+        <button class="chip ativo" data-filtro="TODOS" role="tab">Todos</button>
+        <button class="chip chip-faq" data-filtro="FAQ" role="tab">FAQs</button>
+        <button class="chip chip-tab" data-filtro="TAB" role="tab">Tabulações</button>
+      </div>
+
+      <!-- Filtro por categoria -->
+      <select id="filtro-categoria" title="Filtrar por categoria">
+        <option value="">Todas as categorias</option>
+      </select>
+    </div>
+
+    <!-- Contadores -->
+    <div class="contadores" id="contadores">
+      <span class="contador contador-faq"><strong id="qtd-faq">0</strong> FAQs</span>
+      <span class="separador">·</span>
+      <span class="contador contador-tab"><strong id="qtd-tab">0</strong> Tabulações</span>
+      <span class="separador" id="sep-resultados" hidden>·</span>
+      <span class="contador" id="qtd-resultados" hidden></span>
+    </div>
+  </div>
+
+  <!-- Esqueleto de carregamento -->
+  <div id="skeleton" class="lista-cards">
+    <div class="card skeleton"></div>
+    <div class="card skeleton"></div>
+    <div class="card skeleton"></div>
+    <div class="card skeleton"></div>
+  </div>
+
+  <!-- Lista de registros -->
+  <div id="lista-cards" class="lista-cards" hidden></div>
+
+  <!-- Estado vazio -->
+  <div id="estado-vazio" class="estado-vazio" hidden>
+    <div class="vazio-icone">📭</div>
+    <h3 id="vazio-titulo">Nenhum registro encontrado</h3>
+    <p id="vazio-texto">Ajuste a pesquisa ou cadastre um novo conteúdo.</p>
+    <button class="btn btn-primario" id="btn-vazio-novo">➕ Novo Cadastro</button>
+  </div>
+
+</section>

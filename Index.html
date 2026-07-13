@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <title>Base de Conhecimento</title>
+  <?!= include('Style'); ?>
+</head>
+<body>
+
+  <div id="app">
+
+    <!-- ===================== MENU SUPERIOR ===================== -->
+    <header class="topbar">
+      <button class="brand" id="btn-home" title="Ir para a tela principal">
+        <span class="brand-mark">BC</span>
+        <span class="brand-nome">Base de Conhecimento</span>
+      </button>
+
+      <nav class="topbar-acoes">
+        <button class="btn btn-ghost" id="btn-nav-home">🏠 <span class="so-desktop">Base de Conhecimento</span></button>
+        <button class="btn btn-primario" id="btn-novo">➕ <span class="so-desktop">Novo Cadastro</span></button>
+        <button class="btn btn-ghost" id="btn-tema" title="Alterar tema">🎨 <span class="so-desktop" id="tema-nome">Tema</span></button>
+      </nav>
+    </header>
+
+    <!-- ===================== TELAS ===================== -->
+    <main class="conteudo">
+      <?!= include('Home'); ?>
+      <?!= include('Cadastro'); ?>
+    </main>
+
+  </div>
+
+  <!-- ===================== TOASTS ===================== -->
+  <div id="toasts" aria-live="polite"></div>
+
+  <!-- ===================== MODAL DE CONFIRMAÇÃO ===================== -->
+  <div class="modal-overlay" id="modal-confirmar" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
+      <h3 id="modal-titulo">Excluir registro</h3>
+      <p id="modal-mensagem">Tem certeza que deseja excluir este registro? Esta ação não pode ser desfeita.</p>
+      <div class="modal-acoes">
+        <button class="btn btn-ghost" id="modal-cancelar">Cancelar</button>
+        <button class="btn btn-perigo" id="modal-confirmar-btn">Excluir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== ÁREA DE IMPRESSÃO ===================== -->
+  <div id="print-area" aria-hidden="true"></div>
+
+  <?!= include('Script'); ?>
+</body>
+</html>
