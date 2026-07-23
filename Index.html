@@ -8,6 +8,8 @@
 </head>
 <body>
 
+  <a class="pular-conteudo" href="#view-home">Pular para o conteúdo</a>
+
   <div id="app">
 
     <!-- ===================== MENU SUPERIOR ===================== -->
@@ -19,21 +21,24 @@
 
       <nav class="topbar-acoes">
         <button class="btn btn-ghost" id="btn-nav-home">🏠 <span class="so-desktop">Base de Conhecimento</span></button>
+        <button class="btn btn-ghost" id="btn-dashboard">📊 <span class="so-desktop">Indicadores</span></button>
         <button class="btn btn-primario" id="btn-novo">➕ <span class="so-desktop">Novo Cadastro</span></button>
-        <button class="btn btn-ghost" id="btn-tema" title="Alterar tema">🎨 <span class="so-desktop" id="tema-nome">Tema</span></button>
+        <button class="btn btn-ghost" id="btn-config" title="Configurações">⚙️ <span class="so-desktop">Configurações</span></button>
       </nav>
     </header>
 
     <!-- ===================== TELAS ===================== -->
-    <main class="conteudo">
+    <main class="conteudo" id="conteudo-principal">
       <?!= include('Home'); ?>
       <?!= include('Cadastro'); ?>
+      <?!= include('Dashboard'); ?>
+      <?!= include('Config'); ?>
     </main>
 
   </div>
 
   <!-- ===================== TOASTS ===================== -->
-  <div id="toasts" aria-live="polite"></div>
+  <div id="toasts" role="status" aria-live="polite" aria-atomic="true"></div>
 
   <!-- ===================== MODAL DE CONFIRMAÇÃO ===================== -->
   <div class="modal-overlay" id="modal-confirmar" hidden>
@@ -42,7 +47,7 @@
       <p id="modal-mensagem">Tem certeza que deseja excluir este registro? Esta ação não pode ser desfeita.</p>
       <div class="modal-acoes">
         <button class="btn btn-ghost" id="modal-cancelar">Cancelar</button>
-        <button class="btn btn-perigo" id="modal-confirmar-btn">Excluir</button>
+        <button class="btn btn-perigo" id="modal-confirmar-btn" autofocus>Excluir</button>
       </div>
     </div>
   </div>

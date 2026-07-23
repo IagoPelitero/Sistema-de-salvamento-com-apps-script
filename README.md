@@ -15,16 +15,21 @@ Rápido, responsivo e sem dependências externas — funciona no desktop e no ce
 - 🕐 **Histórico de pesquisa** — as últimas 8 buscas, ao focar o campo vazio
 - 📋 **Copiar com um clique** — texto enviado direto para a área de transferência
 - ➕ **Cadastro e edição** de FAQs e Tabulações em formulário simples
-- 🗑️ **Exclusão** com modal de confirmação
+- 🗑️ **Exclusão com lixeira** — o registro vai para a aba `LIXEIRA` com autor e data, e pode ser restaurado
+- ↻ **Atualização de dados** — busca cadastros feitos por colegas sem recarregar a página
 - ⭐ **Favoritos** — salvos no navegador, exibidos no topo da lista e com filtro próprio
 - 🎨 **Cor automática por categoria** — tom estável derivado do nome, sem cadastro nem coluna extra
-- 🏷️ **Filtros rápidos** — Todos / FAQs / Tabulações + filtros em cascata por categoria e subcategoria
+- 🏷️ **Filtros rápidos** — Todos / FAQs / Tabulações + filtros em cascata por categoria e subcategoria, com **limpar filtros** a um clique
+- 📊 **Indicadores** — totais, rankings por categoria/subcategoria/autor e pendências, calculados sem chamar o servidor
+- 📚 **Lista agrupada por categoria** — cabeçalho fixo ao rolar; com uma categoria filtrada, agrupa por subcategoria
 - 📊 **Contadores** de FAQs e Tabulações no topo da tela
 - 📖 **Ver mais / Ver menos** para textos longos
 - 🖨️ **Impressão / exportação em PDF** de qualquer registro individual
 - 🕐 **Histórico de edição** — data de criação e última alteração em cada card
 - ⌨️ **Atalhos de teclado** — `Ctrl + K` (busca) · `Ctrl + N` (novo cadastro) · `Esc` (voltar/fechar)
-- 🎨 **3 temas** — PortoBank (azul), Rosa e Dark, com preferência salva no navegador
+- ♿ **Acessibilidade** — contraste WCAG AA nos 3 temas, navegação completa por teclado, nomes acessíveis e anúncios para leitores de tela
+- 🎨 **3 temas** — PortoBank (azul), Rosa e Dark, escolhidos em Configurações
+- ⚙️ **Preferências** — densidade, linhas visíveis no card, animações, agrupamento e sugestões de busca
 - 📱 **Layout responsivo** — grid de cards no desktop, coluna única no celular
 
 ---
@@ -38,6 +43,8 @@ Rápido, responsivo e sem dependências externas — funciona no desktop e no ce
 ├── Index.html       → Shell da aplicação (menu, modal, toasts, includes)
 ├── Home.html        → Tela principal (busca, filtros, lista de cards)
 ├── Cadastro.html    → Tela de cadastro/edição
+├── Dashboard.html   → Tela de indicadores
+├── Config.html      → Tela de configurações
 ├── Style.html       → CSS completo: design tokens + 3 temas
 └── Script.html      → Lógica do cliente (ES6+, sem bibliotecas)
 
@@ -77,6 +84,7 @@ A planilha **"Base de Conhecimento — Dados"** é criada **automaticamente** no
 |---|---|---|
 | `FAQ` | `FAQ-` | FAQ-0001, FAQ-0002… |
 | `TABULAÇÕES` | `TAB-` | TAB-0001, TAB-0002… |
+| `LIXEIRA` | — | Excluídos, com origem, autor e data |
 
 ### Colunas (ambas as abas)
 
@@ -123,6 +131,8 @@ Crie cada arquivo no editor com o **nome exato** (sem extensão no nome — o ed
 | `Index` | HTML | `Index.html` |
 | `Home` | HTML | `Home.html` |
 | `Cadastro` | HTML | `Cadastro.html` |
+| `Dashboard` | HTML | `Dashboard.html` |
+| `Config` | HTML | `Config.html` |
 | `Style` | HTML | `Style.html` |
 | `Script` | HTML | `Script.html` |
 
@@ -150,6 +160,7 @@ Em **Configurações do projeto** (⚙️) → **Fuso horário** → `(GMT-03:00
 | Filtrar por tipo | Chips **Todos / FAQs / Tabulações** |
 | Filtrar por categoria | Seletor ao lado dos chips |
 | Filtrar por subcategoria | Segundo seletor — habilita ao escolher uma categoria |
+| Limpar todos os filtros | Botão **✕ Limpar filtros**, ao lado dos contadores |
 | Buscar por várias palavras | Separe por espaço: `cartao cancelamento` exige as duas |
 | Ver buscas recentes | Clique no campo de busca vazio |
 | Copiar texto | Botão **📋 Copiar** no card |
@@ -158,7 +169,8 @@ Em **Configurações do projeto** (⚙️) → **Fuso horário** → `(GMT-03:00
 | Excluir | Botão **🗑️** → confirmação obrigatória |
 | Favoritar | Botão **☆/⭐** — favoritos aparecem primeiro |
 | Imprimir / PDF | Botão **🖨️** no card |
-| Trocar tema | Botão **🎨 Tema** no menu (PortoBank → Rosa → Dark) |
+| Ver indicadores | Botão **📊 Indicadores** no menu — clique nas barras para filtrar a lista |
+| Trocar tema e preferências | Botão **⚙️ Configurações** no menu |
 
 ---
 
@@ -177,6 +189,7 @@ O tema escolhido fica salvo no `localStorage` do navegador. Cards de **FAQ** tê
 ## ⚡ Performance
 
 - **1 chamada ao servidor** por sessão para leitura — todo o resto é cache local
+- **Renderização incremental**: 60 cards por lote, com os seguintes carregando na rolagem
 - **Índice de busca pré-computado**: a normalização de acentos acontece uma vez por registro, no carregamento. Durante a digitação sobra apenas `indexOf` — medido em ~460× mais rápido que normalizar a cada tecla
 - **Atualização cirúrgica**: favoritar ou expandir um card não redesenha a lista inteira
 - Renderização por *string building* + delegação de eventos
@@ -188,7 +201,8 @@ O tema escolhido fica salvo no `localStorage` do navegador. Cards de **FAQ** tê
 ## 🔒 Observações
 
 - **Não há login nem controle de permissões** — qualquer pessoa com acesso à URL pode visualizar, cadastrar, editar e excluir (por desenho).
-- Favoritos, tema e histórico de pesquisa são **por navegador** (localStorage), não sincronizados entre dispositivos.
+- Favoritos, preferências e histórico de pesquisa são **por navegador** (localStorage), não sincronizados entre dispositivos.
+- O `simulador.html` usa e-mails fictícios no domínio `@teste.test`, reservado pela RFC 2606 e impossível de registrar.
 - A base de dados **nunca é recriada automaticamente** quando já existe um ID registrado. Se a planilha for realmente excluída, execute `recriarBaseDeDados()` manualmente no editor do Apps Script.
 - Concorrência de escrita é tratada com `LockService` (timeout de 10 s com mensagem amigável).
 

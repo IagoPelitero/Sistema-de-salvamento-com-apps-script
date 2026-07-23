@@ -33,6 +33,16 @@ var DB_CABECALHO = [
 /** Posição (1-indexada) da coluna Subcategoria. */
 var DB_COL_SUBCATEGORIA = 8;
 
+/**
+ * Aba de lixeira (Fase 9). É uma aba NOVA: as abas FAQ e TABULAÇÕES
+ * não mudam de estrutura, nenhuma coluna é renomeada e instalações
+ * antigas continuam funcionando sem migração.
+ */
+var DB_ABA_LIXEIRA = 'LIXEIRA';
+
+/** Cabeçalho da lixeira: o registro original + o rastro da exclusão. */
+var DB_CABECALHO_LIXEIRA = DB_CABECALHO.concat(['Origem', 'Excluído por', 'Data exclusão']);
+
 /** Configuração das abas por tipo de registro. */
 var DB_ABAS = {
   FAQ: { nome: 'FAQ', prefixo: 'FAQ' },
@@ -184,6 +194,25 @@ function garantirColunaSubcategoria_(aba) {
     .setFontWeight('bold')
     .setBackground('#0047BB')
     .setFontColor('#FFFFFF');
+}
+
+/**
+ * Garante a existência da aba LIXEIRA, criando-a sob demanda.
+ * @param {Spreadsheet} ss
+ * @returns {Sheet}
+ */
+function garantirLixeira_(ss) {
+  var aba = ss.getSheetByName(DB_ABA_LIXEIRA);
+  if (aba) return aba;
+
+  aba = ss.insertSheet(DB_ABA_LIXEIRA);
+  aba.getRange(1, 1, 1, DB_CABECALHO_LIXEIRA.length)
+    .setValues([DB_CABECALHO_LIXEIRA])
+    .setFontWeight('bold')
+    .setBackground('#5A6779')
+    .setFontColor('#FFFFFF');
+  aba.setFrozenRows(1);
+  return aba;
 }
 
 /**
@@ -372,13 +401,30 @@ function updateRecord(dados) {
 }
 
 /**
- * Exclui um registro pelo ID.
+ * Descobre o tipo a partir do prefixo do ID.
+ * @param {string} id
+ * @returns {string|null} "FAQ", "TAB" ou null.
+ */
+function tipoPorId_(id) {
+  if (id.indexOf('FAQ-') === 0) return 'FAQ';
+  if (id.indexOf('TAB-') === 0) return 'TAB';
+  return null;
+}
+
+/**
+ * Exclui um registro, movendo-o para a LIXEIRA.
+ *
+ * CORREÇÃO A-03: antes a linha era apagada definitivamente, sem rastro
+ * de quem excluiu. Num sistema sem login, em que qualquer pessoa pode
+ * apagar qualquer registro, isso era risco operacional real. Agora a
+ * linha muda de aba e pode ser restaurada.
+ *
  * @param {string} id - Ex.: "FAQ-0003".
  * @returns {Object} { ok, id }
  */
 function deleteRecord(id) {
   id = String(id || '').trim();
-  var tipo = id.indexOf('FAQ-') === 0 ? 'FAQ' : (id.indexOf('TAB-') === 0 ? 'TAB' : null);
+  var tipo = tipoPorId_(id);
   if (!tipo) throw new Error('ID inválido: ' + id);
 
   return comLock_(function () {
@@ -387,7 +433,85 @@ function deleteRecord(id) {
     if (linha === -1) {
       throw new Error('Registro ' + id + ' não encontrado.');
     }
+
+    // Copia antes de remover: o registro precisa chegar inteiro à lixeira.
+    var colunas = Math.min(DB_CABECALHO.length, aba.getMaxColumns());
+    var valores = aba.getRange(linha, 1, 1, colunas).getValues()[0];
+    while (valores.length < DB_CABECALHO.length) valores.push('');
+
+    var lixeira = garantirLixeira_(obterPlanilha_());
+    lixeira.appendRow(valores.concat([tipo, obterUsuario_(), agoraFormatado_()]));
+
     aba.deleteRow(linha);
     return { ok: true, id: id };
+  });
+}
+
+/**
+ * Lista os registros na lixeira, do mais recente para o mais antigo.
+ * @param {number} [limite=50]
+ * @returns {Object} { ok, registros }
+ */
+function listarLixeira(limite) {
+  limite = limite || 50;
+  var lixeira = garantirLixeira_(obterPlanilha_());
+  var ultimaLinha = lixeira.getLastRow();
+  if (ultimaLinha < 2) return { ok: true, registros: [] };
+
+  var valores = lixeira
+    .getRange(2, 1, ultimaLinha - 1, DB_CABECALHO_LIXEIRA.length)
+    .getValues();
+
+  var registros = [];
+  for (var i = valores.length - 1; i >= 0 && registros.length < limite; i--) {
+    var linha = valores[i];
+    if (!String(linha[0])) continue;
+
+    var registro = linhaParaRegistro_(linha, String(linha[8] || 'FAQ'));
+    registro.excluidoPor = String(linha[9] || '');
+    registro.dataExclusao = normalizarData_(linha[10]);
+    registros.push(registro);
+  }
+
+  return { ok: true, registros: registros };
+}
+
+/**
+ * Devolve um registro da lixeira para a aba de origem.
+ * O ID original é preservado; se ele já estiver em uso, a restauração
+ * é recusada em vez de gerar duplicidade.
+ *
+ * @param {string} id
+ * @returns {Object} { ok, registro }
+ */
+function restaurarRegistro(id) {
+  id = String(id || '').trim();
+  if (!id) throw new Error('ID não informado.');
+
+  return comLock_(function () {
+    var lixeira = garantirLixeira_(obterPlanilha_());
+    var ultimaLinha = lixeira.getLastRow();
+    if (ultimaLinha < 2) throw new Error('A lixeira está vazia.');
+
+    var valores = lixeira.getRange(2, 1, ultimaLinha - 1, DB_CABECALHO_LIXEIRA.length).getValues();
+    var alvo = -1;
+    for (var i = valores.length - 1; i >= 0; i--) {
+      if (String(valores[i][0]) === id) { alvo = i; break; }
+    }
+    if (alvo === -1) throw new Error('Registro ' + id + ' não está na lixeira.');
+
+    var linha = valores[alvo];
+    var tipo = tipoPorId_(id) || String(linha[8] || 'FAQ');
+    var aba = abaPorTipo_(tipo);
+
+    if (localizarLinha_(aba, id) !== -1) {
+      throw new Error('Já existe um registro ativo com o ID ' + id + '. ' +
+                      'Restauração cancelada para não duplicar.');
+    }
+
+    aba.appendRow(linha.slice(0, DB_CABECALHO.length));
+    lixeira.deleteRow(alvo + 2);
+
+    return { ok: true, registro: linhaParaRegistro_(linha, tipo) };
   });
 }

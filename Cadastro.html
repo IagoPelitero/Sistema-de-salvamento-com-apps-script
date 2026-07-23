@@ -10,9 +10,9 @@
     <!-- Tipo -->
     <div class="grupo-campo">
       <label class="rotulo">Tipo</label>
-      <div class="segmentado" id="seg-tipo">
-        <button type="button" class="seg-opcao ativo" data-tipo="FAQ">FAQ</button>
-        <button type="button" class="seg-opcao" data-tipo="TAB">Tabulação</button>
+      <div class="segmentado" id="seg-tipo" role="group" aria-label="Tipo do registro">
+        <button type="button" class="seg-opcao ativo" data-tipo="FAQ" aria-pressed="true">FAQ</button>
+        <button type="button" class="seg-opcao" data-tipo="TAB" aria-pressed="false">Tabulação</button>
       </div>
     </div>
 
@@ -23,11 +23,13 @@
         <input
           type="text"
           id="campo-categoria"
+          aria-required="true"
           list="lista-categorias"
           placeholder="Ex.: Cartão de crédito"
           maxlength="80"
           autocomplete="off">
         <datalist id="lista-categorias"></datalist>
+        <span class="erro-campo" id="erro-categoria" role="alert" hidden></span>
       </div>
 
       <div class="grupo-campo">
@@ -54,9 +56,11 @@
       <input
         type="text"
         id="campo-descricao"
+          aria-required="true"
         placeholder="Ex.: Qual motivo?"
         maxlength="200"
         autocomplete="off">
+      <span class="erro-campo" id="erro-descricao" role="alert" hidden></span>
     </div>
 
     <!-- Texto -->
@@ -64,8 +68,10 @@
       <label class="rotulo" for="campo-texto">Texto</label>
       <textarea
         id="campo-texto"
+        aria-required="true"
         rows="8"
         placeholder="Texto completo que será copiado pelo atendente…"></textarea>
+      <span class="erro-campo" id="erro-texto" role="alert" hidden></span>
       <span class="dica-campo"><span id="contagem-texto">0</span> caracteres</span>
     </div>
 

@@ -39,7 +39,14 @@
     editandoId: null,         // ID em edição (null = novo cadastro)
     tipoForm: 'FAQ',
     salvando: false,
-    confirmarAcao: null       // callback do modal de confirmação
+    confirmarAcao: null,      // callback do modal de confirmação
+    focoAnterior: null,       // elemento que abriu o modal
+    tela: 'home',             // home | cadastro | dashboard | config
+    prefs: {},                // preferências do usuário (localStorage)
+    limite: 0,                // quantos cards já foram renderizados
+    assinatura: '',           // combinação de filtros do último desenho
+    carregadoEm: 0,           // timestamp da última leitura do servidor
+    revalidando: false
   };
 
   const $ = (sel) => document.querySelector(sel);
@@ -229,20 +236,82 @@
    * Persistência local (tema e favoritos)
    * -------------------------------------------------------- */
 
+  /**
+   * Preferências do usuário, com os padrões atuais do sistema.
+   * Alterar um padrão aqui muda o comportamento de quem nunca
+   * abriu a tela de configurações.
+   */
+  const PADROES = {
+    tema: 'portobank',
+    densidade: 'confortavel',
+    linhas: '4',
+    animacoes: 'ligadas',
+    agrupar: 'sim',
+    historico: 'sim'
+  };
+
   function carregarPreferencias() {
+    Estado.prefs = Object.assign({}, PADROES);
+
     try {
-      const tema = localStorage.getItem('bc_tema');
-      if (tema && TEMAS.some(t => t.id === tema)) aplicarTema(tema, false);
-      else aplicarTema('portobank', false);
+      const salvas = JSON.parse(localStorage.getItem('bc_prefs') || '{}');
+      Object.keys(PADROES).forEach(chave => {
+        if (salvas[chave] !== undefined) Estado.prefs[chave] = salvas[chave];
+      });
+
+      // Compatibilidade: versões anteriores guardavam o tema em chave própria.
+      const temaAntigo = localStorage.getItem('bc_tema');
+      if (salvas.tema === undefined && temaAntigo) Estado.prefs.tema = temaAntigo;
 
       const favs = JSON.parse(localStorage.getItem('bc_favoritos') || '[]');
       Estado.favoritos = new Set(favs);
-    } catch (e) {
-      aplicarTema('portobank', false);
-    }
+    } catch (e) { /* armazenamento indisponível — segue com os padrões */ }
 
+    if (!TEMAS.some(t => t.id === Estado.prefs.tema)) Estado.prefs.tema = PADROES.tema;
+
+    aplicarPreferencias();
     carregarHistorico();
   }
+
+  function salvarPreferencias() {
+    try {
+      localStorage.setItem('bc_prefs', JSON.stringify(Estado.prefs));
+    } catch (e) { /* ignora */ }
+  }
+
+  /** Reflete as preferências no documento (atributos lidos pelo CSS). */
+  function aplicarPreferencias() {
+    const p = Estado.prefs;
+    const raiz = document.documentElement;
+
+    raiz.setAttribute('data-theme', p.tema);
+    raiz.setAttribute('data-densidade', p.densidade);
+    raiz.setAttribute('data-animacoes', p.animacoes);
+    raiz.style.setProperty('--linhas-card', p.linhas);
+  }
+
+  /**
+   * Altera uma preferência, persiste e reaplica o que for necessário.
+   * @param {string} chave
+   * @param {string} valor
+   */
+  function definirPreferencia(chave, valor) {
+    if (Estado.prefs[chave] === valor) return;
+
+    Estado.prefs[chave] = valor;
+    salvarPreferencias();
+    aplicarPreferencias();
+    marcarPreferenciasNaTela();
+
+    // Só o agrupamento muda o que é desenhado na lista.
+    if (chave === 'agrupar') renderizar();
+  }
+
+  /** Quantos cards entram por lote na renderização incremental. */
+  const LOTE = 60;
+
+  /** Intervalo mínimo entre revalidações automáticas (5 minutos). */
+  const INTERVALO_REVALIDACAO = 5 * 60 * 1000;
 
   /** Máximo de buscas guardadas no histórico. */
   const LIMITE_HISTORICO = 8;
@@ -305,18 +374,10 @@
     } catch (e) { /* armazenamento indisponível — ignora */ }
   }
 
-  function aplicarTema(id, notificar) {
-    document.documentElement.setAttribute('data-theme', id);
-    try { localStorage.setItem('bc_tema', id); } catch (e) { /* ignora */ }
+  function aplicarTema(id) {
+    definirPreferencia('tema', id);
     const tema = TEMAS.find(t => t.id === id);
-    $('#tema-nome').textContent = tema ? tema.nome : 'Tema';
-    if (notificar) toast('Tema ' + tema.nome + ' aplicado.');
-  }
-
-  function alternarTema() {
-    const atual = document.documentElement.getAttribute('data-theme') || 'portobank';
-    const indice = TEMAS.findIndex(t => t.id === atual);
-    aplicarTema(TEMAS[(indice + 1) % TEMAS.length].id, true);
+    if (tema) toast('Tema ' + tema.nome + ' aplicado.');
   }
 
   /* ----------------------------------------------------------
@@ -328,6 +389,7 @@
       const resposta = await servidor('getAllRecords');
       Estado.registros = (resposta.registros || []).map(indexar);
       Estado.carregado = true;
+      Estado.carregadoEm = Date.now();
       $('#skeleton').hidden = true;
       atualizarCategorias();
       renderizar();
@@ -337,6 +399,54 @@
       $('#vazio-titulo').textContent = 'Não foi possível carregar os dados';
       $('#vazio-texto').textContent = erro.message + ' Recarregue a página para tentar novamente.';
       toast('Erro ao carregar registros.', 'erro');
+    }
+  }
+
+  /**
+   * CORREÇÃO B-03 — revalidação do cache.
+   *
+   * Os dados eram lidos uma única vez por sessão, então dois atendentes
+   * trabalhando ao mesmo tempo não viam os cadastros um do outro até
+   * recarregar a página — o que gera cadastro duplicado e uso de texto
+   * desatualizado. Agora há atualização manual e automática ao voltar
+   * para a aba, respeitando um intervalo mínimo.
+   *
+   * @param {boolean} silencioso - Não avisa quando nada mudou.
+   */
+  async function revalidar(silencioso) {
+    if (Estado.revalidando) return;
+
+    Estado.revalidando = true;
+    const botao = $('#btn-atualizar');
+    botao.classList.add('girando');
+
+    try {
+      const resposta = await servidor('getAllRecords');
+      const novos = (resposta.registros || []).map(indexar);
+
+      const antes = new Set(Estado.registros.map(r => r.id));
+      const incluidos = novos.filter(r => !antes.has(r.id)).length;
+      const removidos = Estado.registros.filter(r => !novos.some(n => n.id === r.id)).length;
+
+      Estado.registros = novos;
+      Estado.carregadoEm = Date.now();
+
+      atualizarCategorias();
+      renderizar();
+
+      if (incluidos || removidos) {
+        const partes = [];
+        if (incluidos) partes.push(incluidos + ' novo' + (incluidos > 1 ? 's' : ''));
+        if (removidos) partes.push(removidos + ' removido' + (removidos > 1 ? 's' : ''));
+        toast('Base atualizada: ' + partes.join(' e ') + '.');
+      } else if (!silencioso) {
+        toast('Tudo já estava atualizado.');
+      }
+    } catch (erro) {
+      if (!silencioso) toast(erro.message, 'erro');
+    } finally {
+      Estado.revalidando = false;
+      botao.classList.remove('girando');
     }
   }
 
@@ -493,6 +603,46 @@
       subs.sort(ordemPtBr).map(sub => `<option value="${escaparHtml(sub)}">`).join('');
   }
 
+  /** Há algum filtro ou busca ativa? Usado pelo contador e pelo botão de limpar. */
+  function temFiltroAtivo() {
+    return !!(Estado.busca.trim() || Estado.filtroTipo !== 'TODOS' ||
+              Estado.filtroCategoria || Estado.filtroSubcategoria ||
+              Estado.somenteFavoritos);
+  }
+
+  /** Zera os filtros sem avisar o usuário — uso interno antes de aplicar outro. */
+  function limparFiltrosSilencioso() {
+    Estado.busca = '';
+    Estado.filtroTipo = 'TODOS';
+    Estado.filtroCategoria = '';
+    Estado.filtroSubcategoria = '';
+    Estado.somenteFavoritos = false;
+
+    $('#campo-pesquisa').value = '';
+    $('#filtro-categoria').value = '';
+
+    $$('.chip').forEach(c => {
+      const ativo = c.dataset.filtro === 'TODOS';
+      c.classList.toggle('ativo', ativo);
+      c.setAttribute('aria-pressed', String(ativo));
+    });
+
+    const favoritos = $('#btn-favoritos');
+    favoritos.classList.remove('ativo');
+    favoritos.setAttribute('aria-pressed', 'false');
+    favoritos.querySelector('.btn-favoritos-icone').textContent = '☆';
+
+    fecharHistorico();
+  }
+
+  /** Devolve a lista ao estado inicial, sem recarregar dados do servidor. */
+  function limparFiltros() {
+    limparFiltrosSilencioso();
+    atualizarSubcategorias();
+    renderizar();
+    toast('Filtros limpos.');
+  }
+
   /**
    * Aplica filtros e busca sobre o cache local.
    * Múltiplas palavras funcionam como AND implícito: "cartao cancelamento"
@@ -537,29 +687,34 @@
     const editado = r.ultimaAlteracao && r.ultimaAlteracao !== r.dataCriacao;
     const rotuloTipo = r.tipo === 'FAQ' ? 'FAQ' : 'Tabulação';
 
-    // Caminho hierárquico: Categoria › Subcategoria
-    const caminho = r.subcategoria
-      ? destacar(r.categoria, r._n.categoria, termos) +
-        '<span class="caminho-sep">›</span>' +
-        destacar(r.subcategoria, r._n.subcategoria, termos)
-      : destacar(r.categoria, r._n.categoria, termos);
+    // Caminho hierárquico como pílulas: informação de localização
+    // precisa ser reconhecível de relance, não texto secundário.
+    const caminho =
+      `<span class="pilula pilula-categoria">${destacar(r.categoria, r._n.categoria, termos)}</span>` +
+      (r.subcategoria
+        ? `<span class="pilula pilula-subcategoria">${destacar(r.subcategoria, r._n.subcategoria, termos)}</span>`
+        : '');
     const caminhoSimples = r.subcategoria ? r.categoria + ' › ' + r.subcategoria : r.categoria;
 
     return `
       <article class="card tipo-${r.tipo} ${favorito ? 'favorito' : ''}" data-id="${r.id}"
+               aria-label="${rotuloTipo}: ${escaparHtml(r.descricao)} — ${escaparHtml(caminhoSimples)}"
                style="--matiz:${matizCategoria(r.categoria)}">
         <div class="card-topo">
           <span class="badge badge-${r.tipo}">${rotuloTipo}</span>
-          <span class="ponto-categoria" aria-hidden="true"></span>
-          <span class="card-categoria" title="${escaparHtml(caminhoSimples)}">${caminho}</span>
+          <span class="caminho" title="${escaparHtml(caminhoSimples)}">${caminho}</span>
           <button class="btn-favorito ${favorito ? 'ativo' : ''}" data-acao="favoritar"
+                  aria-pressed="${favorito}"
+                  aria-label="${favorito ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}: ${escaparHtml(r.descricao)}"
                   title="${favorito ? 'Remover dos favoritos' : 'Favoritar'}">${favorito ? '⭐' : '☆'}</button>
         </div>
 
         <h3 class="card-descricao">${destacar(r.descricao, r._n.descricao, termos)}</h3>
 
         <div class="card-texto ${longo && !expandido ? 'recolhido' : ''}">${destacar(r.texto, r._n.texto, termos)}</div>
-        ${longo ? `<button class="btn-expandir" data-acao="expandir">${expandido ? 'Ver menos ▲' : 'Ver mais ▼'}</button>` : ''}
+        ${longo ? `<button class="btn-expandir" data-acao="expandir"
+                    aria-expanded="${expandido}"
+                    aria-label="${expandido ? 'Recolher' : 'Expandir'} o texto de ${escaparHtml(r.descricao)}">${expandido ? 'Ver menos ▲' : 'Ver mais ▼'}</button>` : ''}
 
         <div class="card-rodape">
           <div class="card-meta">
@@ -567,13 +722,66 @@
             <span>🕐 ${escaparHtml(r.dataCriacao)}${editado ? ' · editado em ' + escaparHtml(r.ultimaAlteracao) : ''}</span>
           </div>
           <div class="card-acoes">
-            <button class="btn-copiar" data-acao="copiar" title="Copiar texto">📋 Copiar</button>
-            <button class="btn-icone" data-acao="editar" title="Editar">✏️</button>
-            <button class="btn-icone" data-acao="imprimir" title="Imprimir / PDF">🖨️</button>
-            <button class="btn-icone" data-acao="excluir" title="Excluir">🗑️</button>
+            <button class="btn-copiar" data-acao="copiar"
+                    aria-label="Copiar o texto de ${escaparHtml(r.descricao)}"
+                    title="Copiar texto"><span aria-hidden="true">📋</span> Copiar</button>
+            <button class="btn-icone" data-acao="editar"
+                    aria-label="Editar ${escaparHtml(r.descricao)}" title="Editar">✏️</button>
+            <button class="btn-icone" data-acao="imprimir"
+                    aria-label="Imprimir ${escaparHtml(r.descricao)}" title="Imprimir / PDF">🖨️</button>
+            <button class="btn-icone" data-acao="excluir"
+                    aria-label="Excluir ${escaparHtml(r.descricao)}" title="Excluir">🗑️</button>
           </div>
         </div>
       </article>`;
+  }
+
+  /**
+   * Agrupa os resultados por um nível da hierarquia.
+   *
+   * Sem categoria filtrada, agrupa por categoria. Com uma categoria já
+   * escolhida, agrupar por ela seria redundante — então desce um nível
+   * e agrupa por subcategoria.
+   *
+   * @param {Array} resultados
+   * @returns {Array<[string, Array]>} Pares [rótulo, registros].
+   */
+  function agrupar(resultados) {
+    const porSub = !!Estado.filtroCategoria;
+    const SEM = porSub ? 'Sem subcategoria' : 'Sem categoria';
+
+    const mapa = new Map();
+    resultados.forEach(r => {
+      const chave = (porSub ? r.subcategoria : r.categoria) || SEM;
+      if (!mapa.has(chave)) mapa.set(chave, []);
+      mapa.get(chave).push(r);
+    });
+
+    // Alfabético, com o grupo "sem classificação" sempre no fim.
+    return [...mapa.entries()].sort((a, b) => {
+      if (a[0] === SEM) return 1;
+      if (b[0] === SEM) return -1;
+      return ordemPtBr(a[0], b[0]);
+    });
+  }
+
+  /** Monta o HTML de um grupo com cabeçalho fixo. */
+  function htmlGrupo(rotulo, itens, termos) {
+    // Agrupando por subcategoria, a cor de referência continua sendo a
+    // da categoria filtrada — mantém a identidade visual do recorte.
+    const base = Estado.filtroCategoria || rotulo;
+
+    return `
+      <section class="grupo" style="--matiz:${matizCategoria(base)}">
+        <h2 class="grupo-cabecalho">
+          <span class="grupo-marca" aria-hidden="true"></span>
+          <span class="grupo-nome">${escaparHtml(rotulo)}</span>
+          <span class="grupo-contagem">${itens.length}</span>
+        </h2>
+        <div class="grupo-corpo lista-cards">
+          ${itens.map(r => htmlCard(r, termos)).join('')}
+        </div>
+      </section>`;
   }
 
   /** Renderiza a lista completa e os contadores. */
@@ -590,9 +798,8 @@
     atualizarContadorFavoritos();
 
     // Contador de resultados (só aparece quando há filtro/busca ativa).
-    const filtrando = Estado.busca.trim() || Estado.filtroTipo !== 'TODOS' ||
-                      Estado.filtroCategoria || Estado.filtroSubcategoria ||
-                      Estado.somenteFavoritos;
+    const filtrando = temFiltroAtivo();
+    $('#btn-limpar').hidden = !filtrando;
     $('#sep-resultados').hidden = !filtrando;
     $('#qtd-resultados').hidden = !filtrando;
     if (filtrando) {
@@ -602,6 +809,7 @@
     if (!resultados.length) {
       lista.hidden = true;
       vazio.hidden = false;
+      $('#btn-vazio-limpar').hidden = !filtrando;
       if (Estado.somenteFavoritos && !Estado.favoritos.size) {
         $('#vazio-titulo').textContent = 'Você ainda não favoritou nada';
         $('#vazio-texto').textContent =
@@ -621,7 +829,38 @@
     lista.hidden = false;
 
     const termos = termosBusca();
-    lista.innerHTML = resultados.map(r => htmlCard(r, termos)).join('');
+
+    // OTIMIZAÇÃO P-04 — renderização incremental.
+    // Mudou o recorte (busca ou filtro)? Recomeça do primeiro lote.
+    // Sem isso, filtrar depois de rolar muito manteria centenas de
+    // cards no DOM sem necessidade.
+    const assinatura = [Estado.busca, Estado.filtroTipo, Estado.filtroCategoria,
+                        Estado.filtroSubcategoria, Estado.somenteFavoritos].join('|');
+    if (assinatura !== Estado.assinatura) {
+      Estado.assinatura = assinatura;
+      Estado.limite = LOTE;
+    }
+
+    const visiveis = resultados.slice(0, Estado.limite);
+    const restantes = resultados.length - visiveis.length;
+
+    // Durante a busca a lista fica plana: o que importa é o resultado,
+    // não a gaveta em que ele mora. Sem busca, o agrupamento transforma
+    // a lista em navegação hierárquica.
+    const agrupado = Estado.prefs.agrupar === 'sim' && !termos.length && visiveis.length > 1;
+    lista.classList.toggle('agrupada', agrupado);
+
+    lista.innerHTML = agrupado
+      ? agrupar(visiveis).map(par => htmlGrupo(par[0], par[1], termos)).join('')
+      : visiveis.map(r => htmlCard(r, termos)).join('');
+
+    // A sentinela só existe enquanto houver o que carregar.
+    const sentinela = $('#sentinela');
+    sentinela.hidden = restantes <= 0;
+    if (restantes > 0) {
+      sentinela.querySelector('.sentinela-texto').textContent =
+        `Mostrando ${visiveis.length} de ${resultados.length} — role para ver mais`;
+    }
   }
 
   /* ----------------------------------------------------------
@@ -681,6 +920,7 @@
     botao.classList.toggle('ativo', favorito);
     botao.textContent = favorito ? '⭐' : '☆';
     botao.title = favorito ? 'Remover dos favoritos' : 'Favoritar';
+    botao.setAttribute('aria-pressed', String(favorito));
 
     atualizarContadorFavoritos();
 
@@ -705,7 +945,10 @@
 
     card.querySelector('.card-texto').classList.toggle('recolhido', !expandido);
     const botao = card.querySelector('[data-acao="expandir"]');
-    if (botao) botao.textContent = expandido ? 'Ver menos ▲' : 'Ver mais ▼';
+    if (botao) {
+      botao.textContent = expandido ? 'Ver menos ▲' : 'Ver mais ▼';
+      botao.setAttribute('aria-expanded', String(expandido));
+    }
   }
 
   function imprimirRegistro(r) {
@@ -737,21 +980,81 @@
         toast(erro.message, 'erro');
       }
     };
+    Estado.focoAnterior = document.activeElement;
     $('#modal-confirmar').hidden = false;
+    $('#modal-confirmar-btn').focus();
+  }
+
+  /**
+   * AC-02 — gestão de foco do modal.
+   *
+   * Antes, o Tab continuava navegando pelos elementos ATRÁS do modal e,
+   * ao fechar, o foco ia para o <body>: quem usa teclado perdia a
+   * posição na lista. Agora o foco fica preso no diálogo e retorna ao
+   * botão que o abriu.
+   */
+  function elementosFocaveis(container) {
+    return $$('#' + container.id + ' button:not([disabled])');
+  }
+
+  function prenderFoco(e) {
+    const modal = $('#modal-confirmar');
+    if (modal.hidden || e.key !== 'Tab') return;
+
+    const focaveis = elementosFocaveis(modal);
+    if (!focaveis.length) return;
+
+    const primeiro = focaveis[0];
+    const ultimo = focaveis[focaveis.length - 1];
+
+    if (e.shiftKey && document.activeElement === primeiro) {
+      e.preventDefault();
+      ultimo.focus();
+    } else if (!e.shiftKey && document.activeElement === ultimo) {
+      e.preventDefault();
+      primeiro.focus();
+    }
   }
 
   function fecharModal() {
     $('#modal-confirmar').hidden = true;
     Estado.confirmarAcao = null;
+
+    // Devolve o foco a quem abriu o diálogo.
+    if (Estado.focoAnterior && document.contains(Estado.focoAnterior)) {
+      Estado.focoAnterior.focus();
+    }
+    Estado.focoAnterior = null;
   }
 
   /* ----------------------------------------------------------
    * Navegação entre telas
    * -------------------------------------------------------- */
 
+  /**
+   * Telas do sistema. Antes o atributo hidden era manipulado em quatro
+   * lugares diferentes (achado C-02); agora existe um ponto único, o que
+   * também evita duas telas visíveis ao mesmo tempo quando surge uma nova.
+   */
+  const TELAS = {
+    home: '#view-home',
+    cadastro: '#view-cadastro',
+    dashboard: '#view-dashboard',
+    config: '#view-config'
+  };
+
+  function irPara(tela) {
+    Object.keys(TELAS).forEach(nome => {
+      $(TELAS[nome]).hidden = nome !== tela;
+    });
+    Estado.tela = tela;
+    $('#btn-dashboard').setAttribute('aria-current', tela === 'dashboard' ? 'page' : 'false');
+    $('#btn-config').setAttribute('aria-current', tela === 'config' ? 'page' : 'false');
+    window.scrollTo({ top: 0 });
+  }
+
   function mostrarHome() {
-    $('#view-cadastro').hidden = true;
-    $('#view-home').hidden = false;
+    irPara('home');
     Estado.editandoId = null;
   }
 
@@ -776,16 +1079,16 @@
     atualizarPreviaCaminho();
     limparInvalidos();
 
-    $('#view-home').hidden = true;
-    $('#view-cadastro').hidden = false;
+    irPara('cadastro');
     $('#campo-categoria').focus();
-    window.scrollTo({ top: 0 });
   }
 
   function definirTipoForm(tipo) {
     Estado.tipoForm = tipo;
     $$('#seg-tipo .seg-opcao').forEach(btn => {
-      btn.classList.toggle('ativo', btn.dataset.tipo === tipo);
+      const ativo = btn.dataset.tipo === tipo;
+      btn.classList.toggle('ativo', ativo);
+      btn.setAttribute('aria-pressed', String(ativo));
     });
   }
 
@@ -813,7 +1116,285 @@
   }
 
   function limparInvalidos() {
-    $$('.invalido').forEach(el => el.classList.remove('invalido'));
+    $$('.invalido').forEach(el => {
+      el.classList.remove('invalido');
+      el.removeAttribute('aria-invalid');
+      el.removeAttribute('aria-describedby');
+    });
+    ['categoria', 'descricao', 'texto'].forEach(campo => {
+      const alvo = $('#erro-' + campo);
+      if (alvo) { alvo.textContent = ''; alvo.hidden = true; }
+    });
+  }
+
+  /**
+   * AC-03 — erro anunciado junto ao campo.
+   * O toast sozinho não diz QUAL campo falhou para quem usa leitor de tela.
+   * @param {string} campo - Sufixo do id (categoria, descricao, texto).
+   * @param {string} mensagem
+   */
+  function marcarInvalido(campo, mensagem) {
+    const entrada = $('#campo-' + campo);
+    const alvo = $('#erro-' + campo);
+
+    entrada.classList.add('invalido');
+    entrada.setAttribute('aria-invalid', 'true');
+
+    if (alvo) {
+      alvo.textContent = '⚠ ' + mensagem;
+      alvo.hidden = false;
+      entrada.setAttribute('aria-describedby', alvo.id);
+    }
+    entrada.focus();
+  }
+
+  /* ----------------------------------------------------------
+   * Dashboard — tudo derivado do cache, sem ida ao servidor
+   * -------------------------------------------------------- */
+
+  /** Quantos itens exibir nas listas de ranking. */
+  const TOPO_RANKING = 8;
+
+  /**
+   * Conta ocorrências de um campo e devolve o ranking decrescente.
+   * @param {Array} registros
+   * @param {Function} extrair - Recebe o registro, devolve a chave (ou '').
+   * @returns {Array<{chave: string, total: number, faq: number, tab: number}>}
+   */
+  function ranking(registros, extrair) {
+    const mapa = new Map();
+
+    registros.forEach(r => {
+      const chave = extrair(r);
+      if (!chave) return;
+      if (!mapa.has(chave)) mapa.set(chave, { chave: chave, total: 0, faq: 0, tab: 0 });
+      const item = mapa.get(chave);
+      item.total++;
+      if (r.tipo === 'FAQ') item.faq++; else item.tab++;
+    });
+
+    // Empate resolvido alfabeticamente: ordem estável entre recargas.
+    return [...mapa.values()].sort((a, b) =>
+      b.total - a.total || ordemPtBr(a.chave, b.chave));
+  }
+
+  /** Calcula todos os indicadores a partir do cache local. */
+  function calcularIndicadores() {
+    const regs = Estado.registros;
+    const faqs = regs.filter(r => r.tipo === 'FAQ').length;
+    const semSub = regs.filter(r => !r.subcategoria).length;
+
+    const categorias = ranking(regs, r => r.categoria);
+    const subcategorias = ranking(regs, r => r.subcategoria);
+    const autores = ranking(regs, r => r.criadoPor);
+
+    // Data da alteração mais recente (fallback para a criação).
+    const ultima = regs.reduce((maior, r) => {
+      const t = tempoDe(r.ultimaAlteracao || r.dataCriacao);
+      return t > maior.t ? { t: t, texto: r.ultimaAlteracao || r.dataCriacao } : maior;
+    }, { t: 0, texto: '—' });
+
+    const recentes = [...regs]
+      .sort((a, b) => tempoDe(b.ultimaAlteracao || b.dataCriacao) -
+                      tempoDe(a.ultimaAlteracao || a.dataCriacao))
+      .slice(0, 5);
+
+    return {
+      total: regs.length,
+      faqs: faqs,
+      tabs: regs.length - faqs,
+      favoritos: regs.filter(r => Estado.favoritos.has(r.id)).length,
+      categorias: categorias,
+      subcategorias: subcategorias,
+      autores: autores,
+      semSub: semSub,
+      ultima: ultima.texto,
+      recentes: recentes
+    };
+  }
+
+  /** Cartão de número principal. */
+  function htmlNumero(rotulo, valor, modificador) {
+    return `
+      <div class="dash-numero ${modificador || ''}">
+        <span class="dash-numero-valor">${valor}</span>
+        <span class="dash-numero-rotulo">${escaparHtml(rotulo)}</span>
+      </div>`;
+  }
+
+  /**
+   * Linha de barra proporcional. Acessível: cada linha é um botão com
+   * rótulo completo, então o leitor de tela recebe o dado, não a forma.
+   */
+  function htmlBarra(item, maximo, acao) {
+    const pct = maximo ? Math.round((item.total / maximo) * 100) : 0;
+    const clicavel = !!acao;
+    const rotulo = `${item.chave}: ${item.total} registro${item.total === 1 ? '' : 's'}` +
+                   (item.faq || item.tab ? ` (${item.faq} FAQ, ${item.tab} tabulação)` : '');
+
+    return `
+      <${clicavel ? 'button' : 'div'} class="dash-barra ${clicavel ? 'clicavel' : ''}"
+        ${clicavel ? `data-acao="${acao}" data-chave="${escaparHtml(item.chave)}"` : ''}
+        style="--matiz:${matizCategoria(item.chave)}"
+        aria-label="${escaparHtml(rotulo)}">
+        <span class="dash-barra-nome">${escaparHtml(item.chave)}</span>
+        <span class="dash-barra-trilho" aria-hidden="true">
+          <span class="dash-barra-preenchida" style="width:${pct}%"></span>
+        </span>
+        <span class="dash-barra-valor">${item.total}</span>
+      </${clicavel ? 'button' : 'div'}>`;
+  }
+
+  /** Desenha a tela de indicadores. */
+  function renderizarDashboard() {
+    const d = calcularIndicadores();
+
+    $('#dash-atualizado').textContent = d.total
+      ? `${d.total} registros na base · última alteração em ${d.ultima}`
+      : 'A base ainda não tem registros.';
+
+    $('#dash-numeros').innerHTML =
+      htmlNumero('FAQs', d.faqs, 'e-faq') +
+      htmlNumero('Tabulações', d.tabs, 'e-tab') +
+      htmlNumero('Categorias', d.categorias.length) +
+      htmlNumero('Subcategorias', d.subcategorias.length) +
+      htmlNumero('Favoritos', d.favoritos);
+
+    const desenhar = (alvo, lista, acao, vazio) => {
+      if (!lista.length) {
+        $(alvo).innerHTML = `<p class="dash-vazio">${vazio}</p>`;
+        return;
+      }
+      const maximo = lista[0].total;
+      $(alvo).innerHTML = lista.slice(0, TOPO_RANKING)
+        .map(item => htmlBarra(item, maximo, acao)).join('');
+    };
+
+    desenhar('#dash-categorias', d.categorias, 'filtrar-categoria', 'Nenhuma categoria cadastrada.');
+    desenhar('#dash-subcategorias', d.subcategorias, 'filtrar-subcategoria', 'Nenhuma subcategoria cadastrada ainda.');
+    desenhar('#dash-autores', d.autores, null, 'Sem autores registrados.');
+
+    $('#dash-recentes').innerHTML = d.recentes.length
+      ? d.recentes.map(r => `
+          <li>
+            <button class="dash-recente" data-acao="abrir" data-id="${r.id}">
+              <span class="badge badge-${r.tipo}">${r.tipo === 'FAQ' ? 'FAQ' : 'Tabulação'}</span>
+              <span class="dash-recente-nome">${escaparHtml(r.descricao)}</span>
+              <span class="dash-recente-data">${escaparHtml(r.ultimaAlteracao || r.dataCriacao)}</span>
+            </button>
+          </li>`).join('')
+      : '<li class="dash-vazio">Nenhuma alteração registrada.</li>';
+
+    // Pendência de classificação só aparece se houver o que classificar.
+    const pendencia = $('#dash-pendencia');
+    pendencia.hidden = d.semSub === 0;
+    if (d.semSub) {
+      const pct = Math.round((d.semSub / d.total) * 100);
+      $('#dash-pendencia-texto').textContent =
+        `${d.semSub} de ${d.total} registros (${pct}%) ainda não têm subcategoria. ` +
+        'Classificá-los melhora a localização durante o atendimento.';
+    }
+  }
+
+  /* ----------------------------------------------------------
+   * Configurações
+   * -------------------------------------------------------- */
+
+  /** Desenha os cartões de tema (o resto do formulário é estático). */
+  function renderizarConfig() {
+    $('#config-temas').innerHTML = TEMAS.map(tema => `
+      <button class="config-tema" data-tema="${tema.id}" role="radio" aria-checked="false">
+        <span class="config-tema-amostra tema-${tema.id}" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </span>
+        <span class="config-tema-nome">${escaparHtml(tema.nome)}</span>
+      </button>`).join('');
+
+    marcarPreferenciasNaTela();
+    atualizarResumoLocal();
+  }
+
+  /** Sincroniza os controles da tela com as preferências vigentes. */
+  function marcarPreferenciasNaTela() {
+    const p = Estado.prefs;
+
+    $$('#config-temas .config-tema').forEach(botao => {
+      const ativo = botao.dataset.tema === p.tema;
+      botao.classList.toggle('ativo', ativo);
+      botao.setAttribute('aria-checked', String(ativo));
+    });
+
+    $$('#view-config [data-pref]').forEach(botao => {
+      const ativo = p[botao.dataset.pref] === botao.dataset.valor;
+      botao.classList.toggle('ativo', ativo);
+      botao.setAttribute('aria-pressed', String(ativo));
+    });
+  }
+
+  /** Resume o que está guardado neste navegador. */
+  function atualizarResumoLocal() {
+    const favoritos = Estado.registros.filter(r => Estado.favoritos.has(r.id)).length;
+    $('#config-resumo-local').textContent =
+      `${favoritos} favorito${favoritos === 1 ? '' : 's'} e ` +
+      `${Estado.historico.length} busca${Estado.historico.length === 1 ? '' : 's'} no histórico.`;
+  }
+
+  /** Carrega e desenha o conteúdo da lixeira (chamada sob demanda). */
+  async function carregarLixeira() {
+    const alvo = $('#config-lixeira-lista');
+    alvo.innerHTML = '<p class="config-ajuda">Carregando…</p>';
+
+    try {
+      const resposta = await servidor('listarLixeira', 30);
+      const itens = resposta.registros || [];
+
+      alvo.innerHTML = itens.length
+        ? itens.map(r => `
+            <div class="lixeira-item">
+              <div class="lixeira-info">
+                <span class="badge badge-${r.tipo}">${r.tipo === 'FAQ' ? 'FAQ' : 'Tabulação'}</span>
+                <span class="lixeira-nome">${escaparHtml(r.descricao)}</span>
+                <span class="config-ajuda">
+                  ${escaparHtml(r.id)} · excluído por ${escaparHtml(r.excluidoPor || '—')}
+                  em ${escaparHtml(r.dataExclusao || '—')}
+                </span>
+              </div>
+              <button class="btn btn-ghost" data-restaurar="${escaparHtml(r.id)}">Restaurar</button>
+            </div>`).join('')
+        : '<p class="config-ajuda">A lixeira está vazia.</p>';
+    } catch (erro) {
+      alvo.innerHTML = `<p class="config-ajuda">${escaparHtml(erro.message)}</p>`;
+    }
+  }
+
+  /** Devolve um registro da lixeira para a base ativa. */
+  async function restaurarDaLixeira(id, botao) {
+    botao.disabled = true;
+    botao.textContent = 'Restaurando…';
+
+    try {
+      const resposta = await servidor('restaurarRegistro', id);
+      Estado.registros.push(indexar(resposta.registro));
+      atualizarCategorias();
+      renderizar();
+      await carregarLixeira();
+      atualizarResumoLocal();
+      toast('Registro ' + id + ' restaurado.');
+    } catch (erro) {
+      botao.disabled = false;
+      botao.textContent = 'Restaurar';
+      toast(erro.message, 'erro');
+    }
+  }
+
+  /** Volta todas as preferências ao padrão de fábrica. */
+  function restaurarPadroes() {
+    Estado.prefs = Object.assign({}, PADROES);
+    salvarPreferencias();
+    aplicarPreferencias();
+    marcarPreferenciasNaTela();
+    renderizar();
+    toast('Preferências restauradas.');
   }
 
   /* ----------------------------------------------------------
@@ -833,17 +1414,9 @@
 
     // Validação simples no cliente com destaque visual.
     limparInvalidos();
-    let invalido = null;
-    if (!dados.categoria) invalido = '#campo-categoria';
-    else if (!dados.descricao) invalido = '#campo-descricao';
-    else if (!dados.texto) invalido = '#campo-texto';
-
-    if (invalido) {
-      $(invalido).classList.add('invalido');
-      $(invalido).focus();
-      toast('Preencha todos os campos.', 'erro');
-      return;
-    }
+    if (!dados.categoria) return marcarInvalido('categoria', 'Informe a categoria.');
+    if (!dados.descricao) return marcarInvalido('descricao', 'Informe a descrição ou cenário.');
+    if (!dados.texto) return marcarInvalido('texto', 'Informe o texto.');
 
     Estado.salvando = true;
     const btn = $('#btn-salvar');
@@ -888,7 +1461,122 @@
     $('#btn-nav-home').addEventListener('click', mostrarHome);
     $('#btn-novo').addEventListener('click', () => abrirCadastro(null));
     $('#btn-vazio-novo').addEventListener('click', () => abrirCadastro(null));
-    $('#btn-tema').addEventListener('click', alternarTema);
+    $('#btn-limpar').addEventListener('click', limparFiltros);
+    $('#btn-atualizar').addEventListener('click', () => revalidar(false));
+
+    // Carrega o próximo lote quando a sentinela entra na tela.
+    if ('IntersectionObserver' in window) {
+      const observador = new IntersectionObserver((entradas) => {
+        // A assinatura dos filtros não muda aqui, então renderizar()
+        // preserva o limite ampliado em vez de voltar ao primeiro lote.
+        if (entradas[0].isIntersecting && !$('#sentinela').hidden) {
+          Estado.limite += LOTE;
+          renderizar();
+        }
+      }, { rootMargin: '300px' });
+      observador.observe($('#sentinela'));
+    } else {
+      // Navegador antigo: sem observador, o botão faz o papel.
+      $('#sentinela').addEventListener('click', () => {
+        Estado.limite += LOTE;
+        renderizar();
+      });
+    }
+
+    // Ao voltar para a aba, verifica se alguém cadastrou algo nesse meio-tempo.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') return;
+      if (Estado.tela !== 'home' || !Estado.carregado) return;
+      if (Date.now() - Estado.carregadoEm < INTERVALO_REVALIDACAO) return;
+      revalidar(true);
+    });
+
+    // Dashboard
+    $('#btn-dashboard').addEventListener('click', () => {
+      renderizarDashboard();
+      irPara('dashboard');
+    });
+    $('#btn-dash-voltar').addEventListener('click', mostrarHome);
+
+    $('#btn-dash-pendencia').addEventListener('click', () => {
+      limparFiltrosSilencioso();
+      Estado.filtroSubcategoria = SEM_SUB;
+      mostrarHome();
+      renderizar();
+    });
+
+    // Barras e itens recentes levam de volta à lista já filtrada.
+    $('#view-dashboard').addEventListener('click', (e) => {
+      const alvo = e.target.closest('[data-acao]');
+      if (!alvo) return;
+      const acao = alvo.dataset.acao;
+
+      if (acao === 'filtrar-categoria') {
+        limparFiltrosSilencioso();
+        Estado.filtroCategoria = alvo.dataset.chave;
+        $('#filtro-categoria').value = alvo.dataset.chave;
+        atualizarSubcategorias();
+      } else if (acao === 'filtrar-subcategoria') {
+        limparFiltrosSilencioso();
+        const registro = Estado.registros.find(r => r.subcategoria === alvo.dataset.chave);
+        if (registro) {
+          Estado.filtroCategoria = registro.categoria;
+          $('#filtro-categoria').value = registro.categoria;
+          atualizarSubcategorias();
+          Estado.filtroSubcategoria = alvo.dataset.chave;
+          $('#filtro-subcategoria').value = alvo.dataset.chave;
+        }
+      } else if (acao === 'abrir') {
+        const registro = Estado.registros.find(r => r.id === alvo.dataset.id);
+        if (registro) {
+          limparFiltrosSilencioso();
+          Estado.busca = registro.descricao;
+          $('#campo-pesquisa').value = registro.descricao;
+        }
+      } else {
+        return;
+      }
+
+      mostrarHome();
+      renderizar();
+    });
+    $('#btn-vazio-limpar').addEventListener('click', limparFiltros);
+    $('#btn-config').addEventListener('click', () => {
+      renderizarConfig();
+      irPara('config');
+    });
+    $('#btn-config-voltar').addEventListener('click', mostrarHome);
+
+    // Um único ouvinte cobre temas e todos os segmentados de preferência.
+    $('#view-config').addEventListener('click', (e) => {
+      const tema = e.target.closest('[data-tema]');
+      if (tema) { aplicarTema(tema.dataset.tema); return; }
+
+      const pref = e.target.closest('[data-pref]');
+      if (pref) definirPreferencia(pref.dataset.pref, pref.dataset.valor);
+    });
+
+    $('#btn-lixeira-carregar').addEventListener('click', carregarLixeira);
+
+    $('#config-lixeira-lista').addEventListener('click', (e) => {
+      const botao = e.target.closest('[data-restaurar]');
+      if (botao) restaurarDaLixeira(botao.dataset.restaurar, botao);
+    });
+
+    $('#btn-config-limpar-historico').addEventListener('click', () => {
+      limparHistorico();
+      atualizarResumoLocal();
+    });
+
+    $('#btn-config-limpar-favoritos').addEventListener('click', () => {
+      Estado.favoritos.clear();
+      salvarFavoritos();
+      atualizarResumoLocal();
+      renderizar();
+      toast('Favoritos removidos.');
+    });
+
+    $('#btn-config-restaurar').addEventListener('click', restaurarPadroes);
     $('#btn-cancelar').addEventListener('click', mostrarHome);
     $('#btn-salvar').addEventListener('click', salvar);
 
@@ -907,7 +1595,7 @@
 
     // Histórico: abre ao focar o campo vazio.
     campoPesquisa.addEventListener('focus', () => {
-      if (!campoPesquisa.value.trim()) abrirHistorico();
+      if (Estado.prefs.historico === 'sim' && !campoPesquisa.value.trim()) abrirHistorico();
     });
 
     campoPesquisa.addEventListener('keydown', (e) => {
@@ -940,8 +1628,12 @@
     // Filtros rápidos por tipo.
     $$('.chip').forEach(chip => {
       chip.addEventListener('click', () => {
-        $$('.chip').forEach(c => c.classList.remove('ativo'));
+        $$('.chip').forEach(c => {
+          c.classList.remove('ativo');
+          c.setAttribute('aria-pressed', 'false');
+        });
         chip.classList.add('ativo');
+        chip.setAttribute('aria-pressed', 'true');
         Estado.filtroTipo = chip.dataset.filtro;
         renderizar();
       });
@@ -1023,6 +1715,9 @@
     $('#modal-confirmar').addEventListener('click', (e) => {
       if (e.target === $('#modal-confirmar')) fecharModal();
     });
+
+    // Foco preso dentro do modal enquanto ele estiver aberto.
+    document.addEventListener('keydown', prenderFoco);
 
     // Atalhos de teclado.
     document.addEventListener('keydown', (e) => {

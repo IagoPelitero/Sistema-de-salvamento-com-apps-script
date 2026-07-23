@@ -79,7 +79,8 @@ html[data-theme="portobank"] {
   --p-cinza-50: #F6F8FB;
   --p-cinza-100: #EDF1F7;
   --p-cinza-200: #E1E7F0;
-  --p-cinza-400: #8A97AC;
+  --p-cinza-300: #7B95BD;   /* borda de controle — 3.04:1 */
+  --p-cinza-400: #62718A;   /* texto sutil — 4.63:1 */
   --p-cinza-600: #5A6779;
   --p-cinza-900: #161D29;
 
@@ -108,7 +109,8 @@ html[data-theme="rosa"] {
   --p-cinza-50: #FBF6F8;
   --p-cinza-100: #F6EDF1;
   --p-cinza-200: #EEDFE6;
-  --p-cinza-400: #A3808F;
+  --p-cinza-300: #BD839E;   /* borda de controle — 3.03:1 */
+  --p-cinza-400: #8B6575;   /* texto sutil — 4.66:1 */
   --p-cinza-600: #6E5560;
   --p-cinza-900: #2B1A22;
 
@@ -137,7 +139,8 @@ html[data-theme="dark"] {
   --p-cinza-50: #0C1015;     /* fundo da página */
   --p-cinza-100: #1D2531;    /* superfície elevada */
   --p-cinza-200: #2B3545;    /* bordas */
-  --p-cinza-400: #7C8AA0;
+  --p-cinza-300: #546887;   /* borda de controle — 3.01:1 */
+  --p-cinza-400: #7C8AA0;   /* texto sutil — 4.89:1 */
   --p-cinza-600: #9DAAC0;
   --p-cinza-900: #EAEFF7;
 
@@ -169,6 +172,10 @@ html[data-theme] {
 
   --borda: var(--p-cinza-200);
   --borda-forte: var(--p-cinza-400);
+  /* Contorno de controles interativos: WCAG 1.4.11 exige 3:1 para
+     elementos de interface. Bordas puramente decorativas (divisórias,
+     contorno de card) seguem em --borda, que é isenta da regra. */
+  --borda-controle: var(--p-cinza-300);
 
   --primaria: var(--p-acento);
   --primaria-forte: var(--p-acento-hover);
@@ -183,14 +190,25 @@ html[data-theme] {
   --perigo-suave: var(--p-perigo-suave);
   --marca-fundo: var(--p-marca);
 
-  /* Cores de categoria: o matiz vem do JS, o acabamento vem do tema. */
+  /* Cores de categoria: o matiz vem do JS, o acabamento vem do tema.
+     Valores calculados para que, nos 18 matizes da paleta, o texto da
+     pílula mantenha ≥4,5:1 e a própria pílula continue visível como
+     forma sobre o card (≥1,18:1). */
   --cat-sat: 60%;
   --cat-luz: 45%;
+  --pil-sat-bg: 55%;
+  --pil-luz-bg: 80%;
+  --pil-sat-fg: 55%;
+  --pil-luz-fg: 20%;
 }
 
 html[data-theme="dark"] {
   --cat-sat: 58%;
   --cat-luz: 64%;
+  --pil-sat-bg: 55%;
+  --pil-luz-bg: 28%;
+  --pil-sat-fg: 68%;
+  --pil-luz-fg: 83%;
 }
 
 /* ------------------------------------------------------------
@@ -229,6 +247,36 @@ mark {
   padding: 0 2px;
   font-weight: 600;
 }
+
+/* Visível apenas para leitores de tela. */
+.apenas-leitor {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Atalho para leitores de tela e navegação por teclado. */
+.pular-conteudo {
+  position: absolute;
+  left: var(--e-4);
+  top: calc(var(--e-2) * -6);
+  z-index: 200;
+  padding: var(--e-2) var(--e-4);
+  background: var(--primaria);
+  color: #fff;
+  border-radius: var(--r-md);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  transition: top var(--dur-base) var(--ease);
+}
+
+.pular-conteudo:focus { top: var(--e-2); }
 
 /* Foco visível e consistente em todo o sistema. */
 :focus-visible {
@@ -346,7 +394,7 @@ mark {
   height: 48px;
   padding: 0 var(--e-4);
   background: var(--superficie);
-  border: 1px solid var(--borda);
+  border: 1px solid var(--borda-controle);
   border-radius: var(--r-lg);
   box-shadow: var(--sombra-1);
   transition: border-color var(--dur-rapida) var(--ease),
@@ -498,7 +546,7 @@ mark {
   padding: 0 var(--e-3);
   background: var(--superficie);
   color: var(--texto);
-  border: 1px solid var(--borda);
+  border: 1px solid var(--borda-controle);
   border-radius: var(--r-md);
   font-size: var(--t-sm);
   cursor: pointer;
@@ -528,17 +576,6 @@ mark {
    da categoria). Saturação e luminosidade são do tema, então a
    mesma categoria fica legível nos três temas.
    ---------------------------------------------------------- */
-.ponto-categoria {
-  flex-shrink: 0;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: hsl(var(--matiz, 210), var(--cat-sat), var(--cat-luz));
-}
-
-/* Sem categoria definida o ponto não deve aparecer sozinho. */
-.card:not([style*="--matiz"]) .ponto-categoria { display: none; }
-
 /* Cartão favoritado: destaque discreto, sem competir com o tipo. */
 .card.favorito {
   border-color: hsl(var(--matiz, 210), var(--cat-sat), var(--cat-luz));
@@ -554,7 +591,7 @@ mark {
   gap: var(--e-2);
   height: 38px;
   padding: 0 var(--e-3);
-  border: 1px solid var(--borda);
+  border: 1px solid var(--borda-controle);
   border-radius: var(--r-md);
   background: var(--superficie);
   color: var(--texto-suave);
@@ -692,7 +729,7 @@ mark {
 
 .card-texto.recolhido {
   display: -webkit-box;
-  -webkit-line-clamp: 4;
+  -webkit-line-clamp: var(--linhas-card, 4);
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -796,7 +833,7 @@ mark {
   padding: 0 var(--e-3);
   background: var(--superficie);
   color: var(--texto);
-  border: 1px solid var(--borda);
+  border: 1px solid var(--borda-controle);
   border-radius: var(--r-md);
   font-size: var(--t-sm);
   cursor: pointer;
@@ -854,6 +891,115 @@ mark {
 
 .previa-caminho .caminho-sep { color: var(--primaria); opacity: .55; }
 
+
+/* ------------------------------------------------------------
+   HIERARQUIA EVIDENTE — pílulas e agrupamento (Fase 6)
+
+   O caminho Categoria › Subcategoria era texto cinza de 12px,
+   perdendo a disputa visual para a descrição logo abaixo. Como
+   é informação de LOCALIZAÇÃO, passa a ser um objeto reconhecível
+   de relance.
+   ---------------------------------------------------------- */
+.caminho {
+  display: flex;
+  align-items: center;
+  gap: var(--e-1);
+  flex: 1;
+  min-width: 0;
+}
+
+.pilula {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 2px var(--e-2);
+  border-radius: var(--r-sm);
+  font-size: var(--t-xs);
+  font-weight: 650;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Nível 1 — categoria: cor cheia derivada do nome. */
+.pilula-categoria {
+  background: hsl(var(--matiz, 210), var(--pil-sat-bg), var(--pil-luz-bg));
+  color: hsl(var(--matiz, 210), var(--pil-sat-fg), var(--pil-luz-fg));
+  flex-shrink: 0;
+}
+
+/* Nível 2 — subcategoria: mesma família, peso menor (contorno). */
+.pilula-subcategoria {
+  border: 1px solid hsl(var(--matiz, 210), var(--pil-sat-bg), var(--pil-luz-bg));
+  color: var(--texto-suave);
+  background: transparent;
+  min-width: 0;
+}
+
+.pilula mark { background: var(--marca-fundo); color: var(--texto); }
+
+/* ---------- Agrupamento da lista ---------- */
+.lista-cards.agrupada {
+  display: block;
+}
+
+.grupo + .grupo { margin-top: var(--e-8); }
+
+.grupo-cabecalho {
+  position: sticky;
+  top: var(--altura-topbar);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+  margin-bottom: var(--e-3);
+  padding: var(--e-2) 0;
+  background: var(--fundo);
+  font-size: var(--t-base);
+  font-weight: 700;
+  letter-spacing: var(--ls-titulo);
+}
+
+.grupo-marca {
+  width: 4px;
+  height: 16px;
+  border-radius: var(--r-full);
+  background: hsl(var(--matiz, 210), var(--cat-sat), var(--cat-luz));
+  flex-shrink: 0;
+}
+
+.grupo-nome {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.grupo-contagem {
+  padding: 1px var(--e-2);
+  border-radius: var(--r-full);
+  background: var(--superficie-2);
+  color: var(--texto-suave);
+  font-size: var(--t-2xs);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Limpar filtros ---------- */
+.btn-limpar {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e-1);
+  padding: 2px var(--e-2);
+  border-radius: var(--r-sm);
+  font-size: var(--t-xs);
+  font-weight: 650;
+  color: var(--primaria);
+  transition: background var(--dur-rapida) var(--ease);
+}
+
+.btn-limpar:hover { background: var(--primaria-suave); }
+
 /* ------------------------------------------------------------
    SKELETON
    ---------------------------------------------------------- */
@@ -879,6 +1025,67 @@ mark {
 @keyframes brilho {
   from { background-position: 140% 0; }
   to { background-position: -60% 0; }
+}
+
+
+/* ------------------------------------------------------------
+   ESCALA — carregamento incremental e revalidação (Fase 9)
+   ---------------------------------------------------------- */
+.sentinela {
+  display: flex;
+  justify-content: center;
+  padding: var(--e-6) var(--e-4);
+}
+
+.sentinela-texto {
+  font-size: var(--t-xs);
+  font-weight: 600;
+  color: var(--texto-sutil);
+}
+
+.btn-atualizar { color: var(--texto-suave); }
+.btn-atualizar:hover { color: var(--primaria); background: var(--primaria-suave); }
+
+.btn-atualizar.girando {
+  pointer-events: none;
+  animation: girar 900ms linear infinite;
+}
+
+@keyframes girar {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ---------- Lixeira ---------- */
+.config-lixeira .config-titulo { align-items: center; }
+
+.lixeira-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-3);
+  padding: var(--e-3) 0;
+  border-top: 1px solid var(--borda);
+}
+
+.lixeira-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.lixeira-nome {
+  font-size: var(--t-sm);
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lixeira-item .btn {
+  flex-shrink: 0;
+  border: 1px solid var(--borda-controle);
 }
 
 /* ------------------------------------------------------------
@@ -912,7 +1119,13 @@ mark {
   max-width: 380px;
 }
 
-.estado-vazio .btn { margin-top: var(--e-2); }
+.vazio-acoes {
+  display: flex;
+  gap: var(--e-2);
+  margin-top: var(--e-2);
+  flex-wrap: wrap;
+  justify-content: center;
+}
 
 /* ------------------------------------------------------------
    FORMULÁRIO
@@ -958,7 +1171,7 @@ mark {
   width: 100%;
   padding: var(--e-3) var(--e-4);
   background: var(--fundo);
-  border: 1px solid var(--borda);
+  border: 1px solid var(--borda-controle);
   border-radius: var(--r-md);
   font-size: var(--t-base);
   line-height: var(--lh-normal);
@@ -985,7 +1198,17 @@ mark {
 .grupo-campo input.invalido,
 .grupo-campo textarea.invalido {
   border-color: var(--perigo);
+  border-width: 2px;   /* cor não pode ser o único indicador (WCAG 1.4.1) */
   background: var(--perigo-suave);
+}
+
+.erro-campo {
+  display: flex;
+  align-items: center;
+  gap: var(--e-1);
+  font-size: var(--t-xs);
+  font-weight: 600;
+  color: var(--perigo);
 }
 
 .dica-campo {
@@ -1037,6 +1260,358 @@ mark {
 }
 
 .form-acoes .btn { height: 38px; }
+
+
+/* ------------------------------------------------------------
+   DASHBOARD (Fase 7)
+   Sem biblioteca de gráficos: barras são divs com largura em %.
+   Cada barra é um botão rotulado, então o leitor de tela recebe
+   o dado ("Cartão de crédito: 7 registros"), não a forma.
+   ---------------------------------------------------------- */
+.painel-cabecalho {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--e-4);
+  margin-bottom: var(--e-6);
+  flex-wrap: wrap;
+}
+
+.painel-cabecalho h2 {
+  font-size: var(--t-xl);
+  font-weight: 650;
+  letter-spacing: var(--ls-titulo);
+}
+
+.painel-cabecalho .form-subtitulo { margin-top: var(--e-1); }
+
+/* ---------- Números principais ---------- */
+.dash-numeros {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--e-3);
+  margin-bottom: var(--e-6);
+}
+
+.dash-numero {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-1);
+  padding: var(--e-4) var(--e-5);
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: var(--r-lg);
+}
+
+.dash-numero-valor {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: var(--ls-titulo);
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-numero-rotulo {
+  font-size: var(--t-xs);
+  font-weight: 600;
+  letter-spacing: var(--ls-rotulo);
+  text-transform: uppercase;
+  color: var(--texto-sutil);
+}
+
+.dash-numero.e-faq .dash-numero-valor { color: var(--faq); }
+.dash-numero.e-tab .dash-numero-valor { color: var(--tab-cor); }
+
+/* ---------- Blocos ---------- */
+.dash-colunas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: var(--e-4);
+}
+
+.dash-bloco {
+  padding: var(--e-5);
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: var(--r-lg);
+}
+
+.dash-titulo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--e-2);
+  margin-bottom: var(--e-4);
+  font-size: var(--t-base);
+  font-weight: 650;
+  letter-spacing: var(--ls-titulo);
+}
+
+.dash-dica {
+  font-size: var(--t-2xs);
+  font-weight: 600;
+  color: var(--texto-sutil);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* ---------- Barras ---------- */
+.dash-barras { display: flex; flex-direction: column; gap: var(--e-2); }
+
+.dash-barra {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px 32px;
+  align-items: center;
+  gap: var(--e-3);
+  width: 100%;
+  padding: var(--e-1) var(--e-2);
+  border-radius: var(--r-sm);
+  text-align: left;
+  transition: background var(--dur-rapida) var(--ease);
+}
+
+.dash-barra.clicavel:hover { background: var(--superficie-2); }
+
+.dash-barra-nome {
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--texto);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-barra-trilho {
+  height: 8px;
+  border-radius: var(--r-full);
+  background: var(--superficie-2);
+  overflow: hidden;
+}
+
+.dash-barra-preenchida {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-full);
+  background: hsl(var(--matiz, 210), var(--cat-sat), var(--cat-luz));
+  transition: width var(--dur-base) var(--ease);
+}
+
+.dash-barra-valor {
+  font-size: var(--t-sm);
+  font-weight: 700;
+  color: var(--texto-suave);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Recentes ---------- */
+.dash-recentes { list-style: none; display: flex; flex-direction: column; gap: var(--e-1); }
+
+.dash-recente {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--e-2);
+  width: 100%;
+  padding: var(--e-2);
+  border-radius: var(--r-sm);
+  text-align: left;
+  transition: background var(--dur-rapida) var(--ease);
+}
+
+.dash-recente:hover { background: var(--superficie-2); }
+
+.dash-recente-nome {
+  font-size: var(--t-sm);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-recente-data {
+  font-size: var(--t-2xs);
+  color: var(--texto-sutil);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-vazio { font-size: var(--t-sm); color: var(--texto-sutil); }
+
+/* ---------- Pendência ---------- */
+.dash-pendencia {
+  margin-top: var(--e-4);
+  border-color: var(--primaria-linha);
+  background: var(--primaria-suave);
+}
+
+.dash-pendencia p {
+  margin-bottom: var(--e-3);
+  font-size: var(--t-sm);
+  line-height: var(--lh-leitura);
+  color: var(--texto);
+}
+
+@media (max-width: 640px) {
+  .dash-numeros { grid-template-columns: repeat(2, 1fr); }
+  .dash-bloco { padding: var(--e-4); }
+  .dash-barra { grid-template-columns: minmax(0, 1fr) 64px 28px; gap: var(--e-2); }
+  .painel-cabecalho { flex-direction: column; }
+}
+
+
+/* ------------------------------------------------------------
+   CONFIGURAÇÕES (Fase 8)
+   ---------------------------------------------------------- */
+.config-blocos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--e-4);
+  align-items: start;
+}
+
+.config-bloco {
+  padding: var(--e-5);
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: var(--r-lg);
+}
+
+.config-titulo {
+  margin-bottom: var(--e-4);
+  font-size: var(--t-base);
+  font-weight: 650;
+  letter-spacing: var(--ls-titulo);
+}
+
+.config-opcao {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-4);
+  padding: var(--e-3) 0;
+  flex-wrap: wrap;
+}
+
+.config-opcao + .config-opcao { border-top: 1px solid var(--borda); }
+
+.config-rotulo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.config-rotulo > span:first-child {
+  font-size: var(--t-sm);
+  font-weight: 650;
+}
+
+.config-ajuda {
+  font-size: var(--t-xs);
+  line-height: var(--lh-normal);
+  color: var(--texto-sutil);
+}
+
+/* ---------- Escolha de tema ---------- */
+.config-temas {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--e-3);
+}
+
+.config-tema {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--e-2);
+  padding: var(--e-3);
+  border: 1px solid var(--borda-controle);
+  border-radius: var(--r-md);
+  transition: border-color var(--dur-rapida) var(--ease),
+              background var(--dur-rapida) var(--ease);
+}
+
+.config-tema:hover { background: var(--superficie-2); }
+
+.config-tema.ativo {
+  border-color: var(--primaria);
+  background: var(--primaria-suave);
+  box-shadow: 0 0 0 1px var(--primaria);
+}
+
+/* Amostra do tema: três faixas com as cores reais de cada esquema. */
+.config-tema-amostra {
+  display: flex;
+  width: 100%;
+  height: 26px;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  border: 1px solid var(--borda);
+}
+
+.config-tema-amostra span { flex: 1; }
+
+.config-tema-amostra.tema-portobank span:nth-child(1) { background: #0047BB; }
+.config-tema-amostra.tema-portobank span:nth-child(2) { background: #FFFFFF; }
+.config-tema-amostra.tema-portobank span:nth-child(3) { background: #F6F8FB; }
+
+.config-tema-amostra.tema-rosa span:nth-child(1) { background: #C42A63; }
+.config-tema-amostra.tema-rosa span:nth-child(2) { background: #FFFFFF; }
+.config-tema-amostra.tema-rosa span:nth-child(3) { background: #FBF6F8; }
+
+.config-tema-amostra.tema-dark span:nth-child(1) { background: #5B95FF; }
+.config-tema-amostra.tema-dark span:nth-child(2) { background: #161C25; }
+.config-tema-amostra.tema-dark span:nth-child(3) { background: #0C1015; }
+
+.config-tema-nome { font-size: var(--t-xs); font-weight: 650; }
+
+/* ---------- Atalhos ---------- */
+.config-atalhos {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-2);
+}
+
+.config-atalhos li {
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+  font-size: var(--t-sm);
+  color: var(--texto-suave);
+}
+
+.config-atalhos kbd {
+  padding: 2px var(--e-2);
+  border: 1px solid var(--borda);
+  border-radius: var(--r-sm);
+  background: var(--fundo);
+  font-family: var(--fonte);
+  font-size: var(--t-2xs);
+  font-weight: 650;
+  color: var(--texto);
+}
+
+.config-atalhos span { margin-left: var(--e-1); }
+
+/* ---------- Ações locais ---------- */
+.config-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--e-2);
+  margin: var(--e-3) 0;
+}
+
+.config-acoes .btn { border: 1px solid var(--borda-controle); }
+
+.config-aviso { font-style: italic; }
+
+@media (max-width: 640px) {
+  .config-bloco { padding: var(--e-4); }
+  .config-opcao { align-items: flex-start; flex-direction: column; gap: var(--e-2); }
+  .config-acoes .btn { flex: 1; justify-content: center; }
+}
 
 /* ------------------------------------------------------------
    TOASTS
@@ -1167,6 +1742,36 @@ mark {
   }
 }
 
+/* Mesma regra, agora também sob controle do usuário (Configurações). */
+html[data-animacoes="reduzidas"] *,
+html[data-animacoes="reduzidas"] *::before,
+html[data-animacoes="reduzidas"] *::after {
+  animation-duration: .01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: .01ms !important;
+}
+
+/* ------------------------------------------------------------
+   DENSIDADE (Fase 8)
+   Reduz a escala de espaçamento em vez de reescrever componentes:
+   um único ajuste de tokens encolhe a interface inteira de forma
+   proporcional.
+   ---------------------------------------------------------- */
+html[data-densidade="compacta"] {
+  --e-3: 10px;
+  --e-4: 12px;
+  --e-5: 14px;
+  --e-6: 18px;
+  --e-8: 24px;
+  --e-10: 30px;
+  --e-12: 36px;
+}
+
+html[data-densidade="compacta"] .card { gap: var(--e-2); }
+html[data-densidade="compacta"] .lista-cards {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+
 /* ------------------------------------------------------------
    RESPONSIVO
    Uma única escala de espaçamento serve os quatro tamanhos:
@@ -1207,6 +1812,8 @@ mark {
   .grupo-hierarquia { grid-template-columns: 1fr; gap: var(--e-4); }
 
   .lista-cards { grid-template-columns: 1fr; gap: var(--e-3); }
+  .grupo + .grupo { margin-top: var(--e-6); }
+  .caminho { flex-wrap: wrap; }
   .card { padding: var(--e-4); padding-left: calc(var(--e-4) - 3px); }
 
   .painel-form { padding: var(--e-5) var(--e-4); border-radius: var(--r-lg); }

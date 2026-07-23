@@ -85,7 +85,8 @@ html[data-theme="portobank"] {
   --p-cinza-50: #F6F8FB;
   --p-cinza-100: #EDF1F7;
   --p-cinza-200: #E1E7F0;
-  --p-cinza-400: #8A97AC;
+  --p-cinza-300: #7B95BD;   /* borda de controle — 3.04:1 */
+  --p-cinza-400: #62718A;   /* texto sutil — 4.63:1 */
   --p-cinza-600: #5A6779;
   --p-cinza-900: #161D29;
 
@@ -114,7 +115,8 @@ html[data-theme="rosa"] {
   --p-cinza-50: #FBF6F8;
   --p-cinza-100: #F6EDF1;
   --p-cinza-200: #EEDFE6;
-  --p-cinza-400: #A3808F;
+  --p-cinza-300: #BD839E;   /* borda de controle — 3.03:1 */
+  --p-cinza-400: #8B6575;   /* texto sutil — 4.66:1 */
   --p-cinza-600: #6E5560;
   --p-cinza-900: #2B1A22;
 
@@ -143,7 +145,8 @@ html[data-theme="dark"] {
   --p-cinza-50: #0C1015;     /* fundo da página */
   --p-cinza-100: #1D2531;    /* superfície elevada */
   --p-cinza-200: #2B3545;    /* bordas */
-  --p-cinza-400: #7C8AA0;
+  --p-cinza-300: #546887;   /* borda de controle — 3.01:1 */
+  --p-cinza-400: #7C8AA0;   /* texto sutil — 4.89:1 */
   --p-cinza-600: #9DAAC0;
   --p-cinza-900: #EAEFF7;
 
@@ -175,6 +178,10 @@ html[data-theme] {
 
   --borda: var(--p-cinza-200);
   --borda-forte: var(--p-cinza-400);
+  /* Contorno de controles interativos: WCAG 1.4.11 exige 3:1 para
+     elementos de interface. Bordas puramente decorativas (divisórias,
+     contorno de card) seguem em --borda, que é isenta da regra. */
+  --borda-controle: var(--p-cinza-300);
 
   --primaria: var(--p-acento);
   --primaria-forte: var(--p-acento-hover);
@@ -189,14 +196,25 @@ html[data-theme] {
   --perigo-suave: var(--p-perigo-suave);
   --marca-fundo: var(--p-marca);
 
-  /* Cores de categoria: o matiz vem do JS, o acabamento vem do tema. */
+  /* Cores de categoria: o matiz vem do JS, o acabamento vem do tema.
+     Valores calculados para que, nos 18 matizes da paleta, o texto da
+     pílula mantenha ≥4,5:1 e a própria pílula continue visível como
+     forma sobre o card (≥1,18:1). */
   --cat-sat: 60%;
   --cat-luz: 45%;
+  --pil-sat-bg: 55%;
+  --pil-luz-bg: 80%;
+  --pil-sat-fg: 55%;
+  --pil-luz-fg: 20%;
 }
 
 html[data-theme="dark"] {
   --cat-sat: 58%;
   --cat-luz: 64%;
+  --pil-sat-bg: 55%;
+  --pil-luz-bg: 28%;
+  --pil-sat-fg: 68%;
+  --pil-luz-fg: 83%;
 }
 
 /* ------------------------------------------------------------
@@ -235,6 +253,36 @@ mark {
   padding: 0 2px;
   font-weight: 600;
 }
+
+/* Visível apenas para leitores de tela. */
+.apenas-leitor {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Atalho para leitores de tela e navegação por teclado. */
+.pular-conteudo {
+  position: absolute;
+  left: var(--e-4);
+  top: calc(var(--e-2) * -6);
+  z-index: 200;
+  padding: var(--e-2) var(--e-4);
+  background: var(--primaria);
+  color: #fff;
+  border-radius: var(--r-md);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  transition: top var(--dur-base) var(--ease);
+}
+
+.pular-conteudo:focus { top: var(--e-2); }
 
 /* Foco visível e consistente em todo o sistema. */
 :focus-visible {
@@ -352,7 +400,7 @@ mark {
   height: 48px;
   padding: 0 var(--e-4);
   background: var(--superficie);
-  border: 1px solid var(--borda);
+  border: 1px solid var(--borda-controle);
   border-radius: var(--r-lg);
   box-shadow: var(--sombra-1);
   transition: border-color var(--dur-rapida) var(--ease),
@@ -504,7 +552,7 @@ mark {
   padding: 0 var(--e-3);
   background: var(--superficie);
   color: var(--texto);
-  border: 1px solid var(--borda);
+  border: 1px solid var(--borda-controle);
   border-radius: var(--r-md);
   font-size: var(--t-sm);
   cursor: pointer;
@@ -534,17 +582,6 @@ mark {
    da categoria). Saturação e luminosidade são do tema, então a
    mesma categoria fica legível nos três temas.
    ---------------------------------------------------------- */
-.ponto-categoria {
-  flex-shrink: 0;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: hsl(var(--matiz, 210), var(--cat-sat), var(--cat-luz));
-}
-
-/* Sem categoria definida o ponto não deve aparecer sozinho. */
-.card:not([style*="--matiz"]) .ponto-categoria { display: none; }
-
 /* Cartão favoritado: destaque discreto, sem competir com o tipo. */
 .card.favorito {
   border-color: hsl(var(--matiz, 210), var(--cat-sat), var(--cat-luz));
@@ -560,7 +597,7 @@ mark {
   gap: var(--e-2);
   height: 38px;
   padding: 0 var(--e-3);
-  border: 1px solid var(--borda);
+  border: 1px solid var(--borda-controle);
   border-radius: var(--r-md);
   background: var(--superficie);
   color: var(--texto-suave);
@@ -698,7 +735,7 @@ mark {
 
 .card-texto.recolhido {
   display: -webkit-box;
-  -webkit-line-clamp: 4;
+  -webkit-line-clamp: var(--linhas-card, 4);
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -802,7 +839,7 @@ mark {
   padding: 0 var(--e-3);
   background: var(--superficie);
   color: var(--texto);
-  border: 1px solid var(--borda);
+  border: 1px solid var(--borda-controle);
   border-radius: var(--r-md);
   font-size: var(--t-sm);
   cursor: pointer;
@@ -860,6 +897,115 @@ mark {
 
 .previa-caminho .caminho-sep { color: var(--primaria); opacity: .55; }
 
+
+/* ------------------------------------------------------------
+   HIERARQUIA EVIDENTE — pílulas e agrupamento (Fase 6)
+
+   O caminho Categoria › Subcategoria era texto cinza de 12px,
+   perdendo a disputa visual para a descrição logo abaixo. Como
+   é informação de LOCALIZAÇÃO, passa a ser um objeto reconhecível
+   de relance.
+   ---------------------------------------------------------- */
+.caminho {
+  display: flex;
+  align-items: center;
+  gap: var(--e-1);
+  flex: 1;
+  min-width: 0;
+}
+
+.pilula {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 2px var(--e-2);
+  border-radius: var(--r-sm);
+  font-size: var(--t-xs);
+  font-weight: 650;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Nível 1 — categoria: cor cheia derivada do nome. */
+.pilula-categoria {
+  background: hsl(var(--matiz, 210), var(--pil-sat-bg), var(--pil-luz-bg));
+  color: hsl(var(--matiz, 210), var(--pil-sat-fg), var(--pil-luz-fg));
+  flex-shrink: 0;
+}
+
+/* Nível 2 — subcategoria: mesma família, peso menor (contorno). */
+.pilula-subcategoria {
+  border: 1px solid hsl(var(--matiz, 210), var(--pil-sat-bg), var(--pil-luz-bg));
+  color: var(--texto-suave);
+  background: transparent;
+  min-width: 0;
+}
+
+.pilula mark { background: var(--marca-fundo); color: var(--texto); }
+
+/* ---------- Agrupamento da lista ---------- */
+.lista-cards.agrupada {
+  display: block;
+}
+
+.grupo + .grupo { margin-top: var(--e-8); }
+
+.grupo-cabecalho {
+  position: sticky;
+  top: var(--altura-topbar);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+  margin-bottom: var(--e-3);
+  padding: var(--e-2) 0;
+  background: var(--fundo);
+  font-size: var(--t-base);
+  font-weight: 700;
+  letter-spacing: var(--ls-titulo);
+}
+
+.grupo-marca {
+  width: 4px;
+  height: 16px;
+  border-radius: var(--r-full);
+  background: hsl(var(--matiz, 210), var(--cat-sat), var(--cat-luz));
+  flex-shrink: 0;
+}
+
+.grupo-nome {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.grupo-contagem {
+  padding: 1px var(--e-2);
+  border-radius: var(--r-full);
+  background: var(--superficie-2);
+  color: var(--texto-suave);
+  font-size: var(--t-2xs);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Limpar filtros ---------- */
+.btn-limpar {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e-1);
+  padding: 2px var(--e-2);
+  border-radius: var(--r-sm);
+  font-size: var(--t-xs);
+  font-weight: 650;
+  color: var(--primaria);
+  transition: background var(--dur-rapida) var(--ease);
+}
+
+.btn-limpar:hover { background: var(--primaria-suave); }
+
 /* ------------------------------------------------------------
    SKELETON
    ---------------------------------------------------------- */
@@ -885,6 +1031,67 @@ mark {
 @keyframes brilho {
   from { background-position: 140% 0; }
   to { background-position: -60% 0; }
+}
+
+
+/* ------------------------------------------------------------
+   ESCALA — carregamento incremental e revalidação (Fase 9)
+   ---------------------------------------------------------- */
+.sentinela {
+  display: flex;
+  justify-content: center;
+  padding: var(--e-6) var(--e-4);
+}
+
+.sentinela-texto {
+  font-size: var(--t-xs);
+  font-weight: 600;
+  color: var(--texto-sutil);
+}
+
+.btn-atualizar { color: var(--texto-suave); }
+.btn-atualizar:hover { color: var(--primaria); background: var(--primaria-suave); }
+
+.btn-atualizar.girando {
+  pointer-events: none;
+  animation: girar 900ms linear infinite;
+}
+
+@keyframes girar {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ---------- Lixeira ---------- */
+.config-lixeira .config-titulo { align-items: center; }
+
+.lixeira-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-3);
+  padding: var(--e-3) 0;
+  border-top: 1px solid var(--borda);
+}
+
+.lixeira-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.lixeira-nome {
+  font-size: var(--t-sm);
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lixeira-item .btn {
+  flex-shrink: 0;
+  border: 1px solid var(--borda-controle);
 }
 
 /* ------------------------------------------------------------
@@ -918,7 +1125,13 @@ mark {
   max-width: 380px;
 }
 
-.estado-vazio .btn { margin-top: var(--e-2); }
+.vazio-acoes {
+  display: flex;
+  gap: var(--e-2);
+  margin-top: var(--e-2);
+  flex-wrap: wrap;
+  justify-content: center;
+}
 
 /* ------------------------------------------------------------
    FORMULÁRIO
@@ -964,7 +1177,7 @@ mark {
   width: 100%;
   padding: var(--e-3) var(--e-4);
   background: var(--fundo);
-  border: 1px solid var(--borda);
+  border: 1px solid var(--borda-controle);
   border-radius: var(--r-md);
   font-size: var(--t-base);
   line-height: var(--lh-normal);
@@ -991,7 +1204,17 @@ mark {
 .grupo-campo input.invalido,
 .grupo-campo textarea.invalido {
   border-color: var(--perigo);
+  border-width: 2px;   /* cor não pode ser o único indicador (WCAG 1.4.1) */
   background: var(--perigo-suave);
+}
+
+.erro-campo {
+  display: flex;
+  align-items: center;
+  gap: var(--e-1);
+  font-size: var(--t-xs);
+  font-weight: 600;
+  color: var(--perigo);
 }
 
 .dica-campo {
@@ -1043,6 +1266,358 @@ mark {
 }
 
 .form-acoes .btn { height: 38px; }
+
+
+/* ------------------------------------------------------------
+   DASHBOARD (Fase 7)
+   Sem biblioteca de gráficos: barras são divs com largura em %.
+   Cada barra é um botão rotulado, então o leitor de tela recebe
+   o dado ("Cartão de crédito: 7 registros"), não a forma.
+   ---------------------------------------------------------- */
+.painel-cabecalho {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--e-4);
+  margin-bottom: var(--e-6);
+  flex-wrap: wrap;
+}
+
+.painel-cabecalho h2 {
+  font-size: var(--t-xl);
+  font-weight: 650;
+  letter-spacing: var(--ls-titulo);
+}
+
+.painel-cabecalho .form-subtitulo { margin-top: var(--e-1); }
+
+/* ---------- Números principais ---------- */
+.dash-numeros {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--e-3);
+  margin-bottom: var(--e-6);
+}
+
+.dash-numero {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-1);
+  padding: var(--e-4) var(--e-5);
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: var(--r-lg);
+}
+
+.dash-numero-valor {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: var(--ls-titulo);
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-numero-rotulo {
+  font-size: var(--t-xs);
+  font-weight: 600;
+  letter-spacing: var(--ls-rotulo);
+  text-transform: uppercase;
+  color: var(--texto-sutil);
+}
+
+.dash-numero.e-faq .dash-numero-valor { color: var(--faq); }
+.dash-numero.e-tab .dash-numero-valor { color: var(--tab-cor); }
+
+/* ---------- Blocos ---------- */
+.dash-colunas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: var(--e-4);
+}
+
+.dash-bloco {
+  padding: var(--e-5);
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: var(--r-lg);
+}
+
+.dash-titulo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--e-2);
+  margin-bottom: var(--e-4);
+  font-size: var(--t-base);
+  font-weight: 650;
+  letter-spacing: var(--ls-titulo);
+}
+
+.dash-dica {
+  font-size: var(--t-2xs);
+  font-weight: 600;
+  color: var(--texto-sutil);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* ---------- Barras ---------- */
+.dash-barras { display: flex; flex-direction: column; gap: var(--e-2); }
+
+.dash-barra {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px 32px;
+  align-items: center;
+  gap: var(--e-3);
+  width: 100%;
+  padding: var(--e-1) var(--e-2);
+  border-radius: var(--r-sm);
+  text-align: left;
+  transition: background var(--dur-rapida) var(--ease);
+}
+
+.dash-barra.clicavel:hover { background: var(--superficie-2); }
+
+.dash-barra-nome {
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--texto);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-barra-trilho {
+  height: 8px;
+  border-radius: var(--r-full);
+  background: var(--superficie-2);
+  overflow: hidden;
+}
+
+.dash-barra-preenchida {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-full);
+  background: hsl(var(--matiz, 210), var(--cat-sat), var(--cat-luz));
+  transition: width var(--dur-base) var(--ease);
+}
+
+.dash-barra-valor {
+  font-size: var(--t-sm);
+  font-weight: 700;
+  color: var(--texto-suave);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Recentes ---------- */
+.dash-recentes { list-style: none; display: flex; flex-direction: column; gap: var(--e-1); }
+
+.dash-recente {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--e-2);
+  width: 100%;
+  padding: var(--e-2);
+  border-radius: var(--r-sm);
+  text-align: left;
+  transition: background var(--dur-rapida) var(--ease);
+}
+
+.dash-recente:hover { background: var(--superficie-2); }
+
+.dash-recente-nome {
+  font-size: var(--t-sm);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-recente-data {
+  font-size: var(--t-2xs);
+  color: var(--texto-sutil);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-vazio { font-size: var(--t-sm); color: var(--texto-sutil); }
+
+/* ---------- Pendência ---------- */
+.dash-pendencia {
+  margin-top: var(--e-4);
+  border-color: var(--primaria-linha);
+  background: var(--primaria-suave);
+}
+
+.dash-pendencia p {
+  margin-bottom: var(--e-3);
+  font-size: var(--t-sm);
+  line-height: var(--lh-leitura);
+  color: var(--texto);
+}
+
+@media (max-width: 640px) {
+  .dash-numeros { grid-template-columns: repeat(2, 1fr); }
+  .dash-bloco { padding: var(--e-4); }
+  .dash-barra { grid-template-columns: minmax(0, 1fr) 64px 28px; gap: var(--e-2); }
+  .painel-cabecalho { flex-direction: column; }
+}
+
+
+/* ------------------------------------------------------------
+   CONFIGURAÇÕES (Fase 8)
+   ---------------------------------------------------------- */
+.config-blocos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--e-4);
+  align-items: start;
+}
+
+.config-bloco {
+  padding: var(--e-5);
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: var(--r-lg);
+}
+
+.config-titulo {
+  margin-bottom: var(--e-4);
+  font-size: var(--t-base);
+  font-weight: 650;
+  letter-spacing: var(--ls-titulo);
+}
+
+.config-opcao {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-4);
+  padding: var(--e-3) 0;
+  flex-wrap: wrap;
+}
+
+.config-opcao + .config-opcao { border-top: 1px solid var(--borda); }
+
+.config-rotulo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.config-rotulo > span:first-child {
+  font-size: var(--t-sm);
+  font-weight: 650;
+}
+
+.config-ajuda {
+  font-size: var(--t-xs);
+  line-height: var(--lh-normal);
+  color: var(--texto-sutil);
+}
+
+/* ---------- Escolha de tema ---------- */
+.config-temas {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--e-3);
+}
+
+.config-tema {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--e-2);
+  padding: var(--e-3);
+  border: 1px solid var(--borda-controle);
+  border-radius: var(--r-md);
+  transition: border-color var(--dur-rapida) var(--ease),
+              background var(--dur-rapida) var(--ease);
+}
+
+.config-tema:hover { background: var(--superficie-2); }
+
+.config-tema.ativo {
+  border-color: var(--primaria);
+  background: var(--primaria-suave);
+  box-shadow: 0 0 0 1px var(--primaria);
+}
+
+/* Amostra do tema: três faixas com as cores reais de cada esquema. */
+.config-tema-amostra {
+  display: flex;
+  width: 100%;
+  height: 26px;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  border: 1px solid var(--borda);
+}
+
+.config-tema-amostra span { flex: 1; }
+
+.config-tema-amostra.tema-portobank span:nth-child(1) { background: #0047BB; }
+.config-tema-amostra.tema-portobank span:nth-child(2) { background: #FFFFFF; }
+.config-tema-amostra.tema-portobank span:nth-child(3) { background: #F6F8FB; }
+
+.config-tema-amostra.tema-rosa span:nth-child(1) { background: #C42A63; }
+.config-tema-amostra.tema-rosa span:nth-child(2) { background: #FFFFFF; }
+.config-tema-amostra.tema-rosa span:nth-child(3) { background: #FBF6F8; }
+
+.config-tema-amostra.tema-dark span:nth-child(1) { background: #5B95FF; }
+.config-tema-amostra.tema-dark span:nth-child(2) { background: #161C25; }
+.config-tema-amostra.tema-dark span:nth-child(3) { background: #0C1015; }
+
+.config-tema-nome { font-size: var(--t-xs); font-weight: 650; }
+
+/* ---------- Atalhos ---------- */
+.config-atalhos {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-2);
+}
+
+.config-atalhos li {
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+  font-size: var(--t-sm);
+  color: var(--texto-suave);
+}
+
+.config-atalhos kbd {
+  padding: 2px var(--e-2);
+  border: 1px solid var(--borda);
+  border-radius: var(--r-sm);
+  background: var(--fundo);
+  font-family: var(--fonte);
+  font-size: var(--t-2xs);
+  font-weight: 650;
+  color: var(--texto);
+}
+
+.config-atalhos span { margin-left: var(--e-1); }
+
+/* ---------- Ações locais ---------- */
+.config-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--e-2);
+  margin: var(--e-3) 0;
+}
+
+.config-acoes .btn { border: 1px solid var(--borda-controle); }
+
+.config-aviso { font-style: italic; }
+
+@media (max-width: 640px) {
+  .config-bloco { padding: var(--e-4); }
+  .config-opcao { align-items: flex-start; flex-direction: column; gap: var(--e-2); }
+  .config-acoes .btn { flex: 1; justify-content: center; }
+}
 
 /* ------------------------------------------------------------
    TOASTS
@@ -1173,6 +1748,36 @@ mark {
   }
 }
 
+/* Mesma regra, agora também sob controle do usuário (Configurações). */
+html[data-animacoes="reduzidas"] *,
+html[data-animacoes="reduzidas"] *::before,
+html[data-animacoes="reduzidas"] *::after {
+  animation-duration: .01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: .01ms !important;
+}
+
+/* ------------------------------------------------------------
+   DENSIDADE (Fase 8)
+   Reduz a escala de espaçamento em vez de reescrever componentes:
+   um único ajuste de tokens encolhe a interface inteira de forma
+   proporcional.
+   ---------------------------------------------------------- */
+html[data-densidade="compacta"] {
+  --e-3: 10px;
+  --e-4: 12px;
+  --e-5: 14px;
+  --e-6: 18px;
+  --e-8: 24px;
+  --e-10: 30px;
+  --e-12: 36px;
+}
+
+html[data-densidade="compacta"] .card { gap: var(--e-2); }
+html[data-densidade="compacta"] .lista-cards {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+
 /* ------------------------------------------------------------
    RESPONSIVO
    Uma única escala de espaçamento serve os quatro tamanhos:
@@ -1213,6 +1818,8 @@ mark {
   .grupo-hierarquia { grid-template-columns: 1fr; gap: var(--e-4); }
 
   .lista-cards { grid-template-columns: 1fr; gap: var(--e-3); }
+  .grupo + .grupo { margin-top: var(--e-6); }
+  .caminho { flex-wrap: wrap; }
   .card { padding: var(--e-4); padding-left: calc(var(--e-4) - 3px); }
 
   .painel-form { padding: var(--e-5) var(--e-4); border-radius: var(--r-lg); }
@@ -1264,25 +1871,27 @@ mark {
 
   const BANCO = {
     FAQ: [
-      ['FAQ-0001','Cartão de crédito','Qual motivo do cancelamento?','Antes de seguir com o cancelamento, pergunte o motivo e registre a resposta. Isso direciona a oferta de retenção:\n\n1. Anuidade — verificar isenção por gasto mínimo\n2. Falta de uso — oferecer benefícios do programa de pontos\n3. Insatisfação com atendimento — registrar e escalar\n4. Migração para concorrente — consultar contraproposta disponível','iago.pelitero@portobank.com','12/07/2026 09:14','21/07/2026 16:02','Cancelamento'],
-      ['FAQ-0002','Cartão de crédito','Cliente contesta a cobrança de anuidade','Prezado(a), entendo sua preocupação com o valor da anuidade. Antes de seguirmos, posso verificar as condições disponíveis para o seu perfil. Em muitos casos conseguimos isenção parcial mediante gasto mensal mínimo na fatura.','iago.pelitero@portobank.com','05/07/2026 14:30','05/07/2026 14:30','Anuidade'],
-      ['FAQ-0003','Cartão de crédito','Prazo de estorno de compra contestada','O prazo para análise da contestação é de até 7 dias úteis. Havendo procedência, o estorno aparece na fatura seguinte. O cliente pode acompanhar o protocolo pelo aplicativo.','supervisao@portobank.com','08/07/2026 15:22','08/07/2026 15:22','Contestação'],
-      ['FAQ-0004','Cartão de crédito','Como emitir segunda via da fatura','A segunda via fica disponível no aplicativo, em Cartões > Faturas. Também pode ser enviada por e-mail a pedido do cliente, para o endereço já cadastrado.','ana.souza@portobank.com','02/07/2026 10:05','02/07/2026 10:05','Fatura'],
-      ['FAQ-0005','Conta corrente','Cliente quer encerrar a conta','Confirme se não há saldo devedor, limite utilizado ou débitos automáticos ativos. Havendo pendência, informe o valor antes de prosseguir. O encerramento é concluído em até 30 dias.','ana.souza@portobank.com','28/06/2026 11:48','19/07/2026 08:31','Encerramento'],
-      ['FAQ-0006','Conta corrente','Isenção da tarifa de manutenção','A isenção é automática para contas com portabilidade de salário ativa. Nos demais casos, depende do pacote contratado — consulte na tela de produtos do cliente.','ana.souza@portobank.com','25/06/2026 16:12','25/06/2026 16:12','Tarifas'],
-      ['FAQ-0007','PIX','Limite noturno para transferências','Entre 20h e 6h o limite padrão é de R$ 1.000 por transação. O cliente pode solicitar alteração pelo aplicativo, com efeito em até 24 horas.','iago.pelitero@portobank.com','20/07/2026 09:00','20/07/2026 09:00','Limites'],
-      ['FAQ-0008','PIX','Cliente relata golpe e pede devolução','Registre o boletim de ocorrência informado pelo cliente e abra o Mecanismo Especial de Devolução no mesmo atendimento. O prazo de análise é de até 7 dias úteis.','supervisao@portobank.com','18/07/2026 13:37','18/07/2026 13:37','Golpes'],
-      ['FAQ-0009','Empréstimo','Simulação de portabilidade','Para simular, é necessário o número do contrato de origem e o saldo devedor atualizado. A simulação não gera compromisso e vale por 5 dias.','carlos.lima@portobank.com','15/05/2026 09:20','15/05/2026 09:20','']
+      ['FAQ-0001','Cartão de crédito','Qual motivo do cancelamento?','Antes de seguir com o cancelamento, pergunte o motivo e registre a resposta. Isso direciona a oferta de retenção:\n\n1. Anuidade — verificar isenção por gasto mínimo\n2. Falta de uso — oferecer benefícios do programa de pontos\n3. Insatisfação com atendimento — registrar e escalar\n4. Migração para concorrente — consultar contraproposta disponível','iago.pelitero@teste.test','12/07/2026 09:14','21/07/2026 16:02','Cancelamento'],
+      ['FAQ-0002','Cartão de crédito','Cliente contesta a cobrança de anuidade','Prezado(a), entendo sua preocupação com o valor da anuidade. Antes de seguirmos, posso verificar as condições disponíveis para o seu perfil. Em muitos casos conseguimos isenção parcial mediante gasto mensal mínimo na fatura.','iago.pelitero@teste.test','05/07/2026 14:30','05/07/2026 14:30','Anuidade'],
+      ['FAQ-0003','Cartão de crédito','Prazo de estorno de compra contestada','O prazo para análise da contestação é de até 7 dias úteis. Havendo procedência, o estorno aparece na fatura seguinte. O cliente pode acompanhar o protocolo pelo aplicativo.','supervisao@teste.test','08/07/2026 15:22','08/07/2026 15:22','Contestação'],
+      ['FAQ-0004','Cartão de crédito','Como emitir segunda via da fatura','A segunda via fica disponível no aplicativo, em Cartões > Faturas. Também pode ser enviada por e-mail a pedido do cliente, para o endereço já cadastrado.','ana.souza@teste.test','02/07/2026 10:05','02/07/2026 10:05','Fatura'],
+      ['FAQ-0005','Conta corrente','Cliente quer encerrar a conta','Confirme se não há saldo devedor, limite utilizado ou débitos automáticos ativos. Havendo pendência, informe o valor antes de prosseguir. O encerramento é concluído em até 30 dias.','ana.souza@teste.test','28/06/2026 11:48','19/07/2026 08:31','Encerramento'],
+      ['FAQ-0006','Conta corrente','Isenção da tarifa de manutenção','A isenção é automática para contas com portabilidade de salário ativa. Nos demais casos, depende do pacote contratado — consulte na tela de produtos do cliente.','ana.souza@teste.test','25/06/2026 16:12','25/06/2026 16:12','Tarifas'],
+      ['FAQ-0007','PIX','Limite noturno para transferências','Entre 20h e 6h o limite padrão é de R$ 1.000 por transação. O cliente pode solicitar alteração pelo aplicativo, com efeito em até 24 horas.','iago.pelitero@teste.test','20/07/2026 09:00','20/07/2026 09:00','Limites'],
+      ['FAQ-0008','PIX','Cliente relata golpe e pede devolução','Registre o boletim de ocorrência informado pelo cliente e abra o Mecanismo Especial de Devolução no mesmo atendimento. O prazo de análise é de até 7 dias úteis.','supervisao@teste.test','18/07/2026 13:37','18/07/2026 13:37','Golpes'],
+      ['FAQ-0009','Empréstimo','Simulação de portabilidade','Para simular, é necessário o número do contrato de origem e o saldo devedor atualizado. A simulação não gera compromisso e vale por 5 dias.','carlos.lima@teste.test','15/05/2026 09:20','15/05/2026 09:20','']
     ],
     TAB: [
-      ['TAB-0001','Cartão de crédito','Cancelamento revertido — cliente retido','Contato receptivo. Cliente solicitou cancelamento por anuidade. Oferecida isenção mediante gasto mínimo. Cliente aceitou a proposta e permaneceu com o produto.','iago.pelitero@portobank.com','10/07/2026 11:40','10/07/2026 11:40','Cancelamento'],
-      ['TAB-0002','Cartão de crédito','Cancelamento efetivado a pedido','Contato receptivo. Cliente confirmou o cancelamento após apresentação das ofertas de retenção. Produto cancelado no sistema. Cliente informado sobre a fatura residual.','iago.pelitero@portobank.com','11/07/2026 08:55','11/07/2026 08:55','Cancelamento'],
-      ['TAB-0003','Cartão de crédito','Fatura reenviada por e-mail','Cliente solicitou segunda via. Fatura reenviada para o e-mail cadastrado. Cliente confirmou o recebimento durante o atendimento.','ana.souza@portobank.com','09/07/2026 17:03','09/07/2026 17:03','Fatura'],
-      ['TAB-0004','Conta corrente','Encerramento solicitado — em processamento','Cliente solicitou encerramento. Sem pendências financeiras. Solicitação registrada e protocolo informado ao cliente.','ana.souza@portobank.com','19/07/2026 08:35','19/07/2026 08:35','Encerramento'],
-      ['TAB-0005','PIX','Contestação de golpe registrada','Cliente relatou transação não reconhecida. MED aberto no atendimento, protocolo informado. Cliente orientado sobre o prazo de análise.','supervisao@portobank.com','18/07/2026 13:45','18/07/2026 13:45','Golpes'],
-      ['TAB-0006','Cobrança','Acordo de pagamento firmado','Cliente negociou o saldo em atraso. Acordo firmado em 3 parcelas. Primeiro boleto enviado por SMS durante o atendimento.','carlos.lima@portobank.com','12/06/2026 10:15','12/06/2026 10:15','']
+      ['TAB-0001','Cartão de crédito','Cancelamento revertido — cliente retido','Contato receptivo. Cliente solicitou cancelamento por anuidade. Oferecida isenção mediante gasto mínimo. Cliente aceitou a proposta e permaneceu com o produto.','iago.pelitero@teste.test','10/07/2026 11:40','10/07/2026 11:40','Cancelamento'],
+      ['TAB-0002','Cartão de crédito','Cancelamento efetivado a pedido','Contato receptivo. Cliente confirmou o cancelamento após apresentação das ofertas de retenção. Produto cancelado no sistema. Cliente informado sobre a fatura residual.','iago.pelitero@teste.test','11/07/2026 08:55','11/07/2026 08:55','Cancelamento'],
+      ['TAB-0003','Cartão de crédito','Fatura reenviada por e-mail','Cliente solicitou segunda via. Fatura reenviada para o e-mail cadastrado. Cliente confirmou o recebimento durante o atendimento.','ana.souza@teste.test','09/07/2026 17:03','09/07/2026 17:03','Fatura'],
+      ['TAB-0004','Conta corrente','Encerramento solicitado — em processamento','Cliente solicitou encerramento. Sem pendências financeiras. Solicitação registrada e protocolo informado ao cliente.','ana.souza@teste.test','19/07/2026 08:35','19/07/2026 08:35','Encerramento'],
+      ['TAB-0005','PIX','Contestação de golpe registrada','Cliente relatou transação não reconhecida. MED aberto no atendimento, protocolo informado. Cliente orientado sobre o prazo de análise.','supervisao@teste.test','18/07/2026 13:45','18/07/2026 13:45','Golpes'],
+      ['TAB-0006','Cobrança','Acordo de pagamento firmado','Cliente negociou o saldo em atraso. Acordo firmado em 3 parcelas. Primeiro boleto enviado por SMS durante o atendimento.','carlos.lima@teste.test','12/06/2026 10:15','12/06/2026 10:15','']
     ]
   };
+
+  const LIXEIRA = [];
 
   const CFG = { FAQ: { prefixo: 'FAQ' }, TAB: { prefixo: 'TAB' } };
 
@@ -1334,7 +1943,7 @@ mark {
 
     createRecord(dados) {
       const d = validar(dados), ts = agora(), id = proximoId(d.tipo);
-      const linha = [id, d.categoria, d.descricao, d.texto, 'voce@portobank.com', ts, ts, d.subcategoria];
+      const linha = [id, d.categoria, d.descricao, d.texto, 'voce@teste.test', ts, ts, d.subcategoria];
       BANCO[d.tipo].push(linha);
       return { ok: true, registro: paraRegistro(linha, d.tipo) };
     },
@@ -1354,8 +1963,42 @@ mark {
       if (!tipo) throw new Error('ID inválido: ' + id);
       const i = BANCO[tipo].findIndex(l => l[0] === id);
       if (i === -1) throw new Error('Registro ' + id + ' não encontrado.');
+
+      // Exclusão move para a lixeira, como no servidor real.
+      const linha = BANCO[tipo][i];
+      LIXEIRA.push(linha.concat([tipo, 'voce@teste.test', agora()]));
       BANCO[tipo].splice(i, 1);
       return { ok: true, id: id };
+    },
+
+    listarLixeira(limite) {
+      limite = limite || 50;
+      const registros = [];
+      for (let i = LIXEIRA.length - 1; i >= 0 && registros.length < limite; i--) {
+        const l = LIXEIRA[i];
+        const r = paraRegistro(l, String(l[8] || 'FAQ'));
+        r.excluidoPor = String(l[9] || '');
+        r.dataExclusao = String(l[10] || '');
+        registros.push(r);
+      }
+      return { ok: true, registros: registros };
+    },
+
+    restaurarRegistro(id) {
+      id = String(id || '');
+      const i = LIXEIRA.findIndex(l => l[0] === id);
+      if (i === -1) throw new Error('Registro ' + id + ' não está na lixeira.');
+
+      const linha = LIXEIRA[i];
+      const tipo = id.indexOf('FAQ-') === 0 ? 'FAQ' : 'TAB';
+      if (BANCO[tipo].some(l => l[0] === id)) {
+        throw new Error('Já existe um registro ativo com o ID ' + id +
+                        '. Restauração cancelada para não duplicar.');
+      }
+
+      BANCO[tipo].push(linha.slice(0, 8));
+      LIXEIRA.splice(i, 1);
+      return { ok: true, registro: paraRegistro(linha, tipo) };
     }
   };
 
@@ -1387,6 +2030,8 @@ mark {
 })();
 </script>
 
+  <a class="pular-conteudo" href="#view-home">Pular para o conteúdo</a>
+
   <div id="app">
 
     <!-- ===================== MENU SUPERIOR ===================== -->
@@ -1398,13 +2043,14 @@ mark {
 
       <nav class="topbar-acoes">
         <button class="btn btn-ghost" id="btn-nav-home">🏠 <span class="so-desktop">Base de Conhecimento</span></button>
+        <button class="btn btn-ghost" id="btn-dashboard">📊 <span class="so-desktop">Indicadores</span></button>
         <button class="btn btn-primario" id="btn-novo">➕ <span class="so-desktop">Novo Cadastro</span></button>
-        <button class="btn btn-ghost" id="btn-tema" title="Alterar tema">🎨 <span class="so-desktop" id="tema-nome">Tema</span></button>
+        <button class="btn btn-ghost" id="btn-config" title="Configurações">⚙️ <span class="so-desktop">Configurações</span></button>
       </nav>
     </header>
 
     <!-- ===================== TELAS ===================== -->
-    <main class="conteudo">
+    <main class="conteudo" id="conteudo-principal">
       <!-- ============================================================
      HOME — Tela principal: pesquisa, filtros e lista de cards
      ============================================================ -->
@@ -1418,22 +2064,30 @@ mark {
         <input
           type="search"
           id="campo-pesquisa"
+          aria-label="Pesquisar na base de conhecimento"
+          aria-describedby="dica-pesquisa"
           placeholder="Pesquisar — várias palavras filtram por todas elas"
           autocomplete="off"
           spellcheck="false">
         <kbd class="so-desktop">Ctrl K</kbd>
       </div>
 
+      <span id="dica-pesquisa" class="apenas-leitor">
+        Digite para filtrar em tempo real. Várias palavras exigem todas elas.
+        Pressione Escape para fechar as buscas recentes.
+      </span>
+
       <!-- Buscas recentes (abre ao focar o campo vazio) -->
-      <div class="historico" id="historico-busca" hidden></div>
+      <div class="historico" id="historico-busca" role="listbox"
+           aria-label="Buscas recentes" hidden></div>
     </div>
 
     <div class="linha-filtros">
       <!-- Filtros rápidos por tipo -->
       <div class="chips" role="group" aria-label="Filtrar por tipo">
-        <button class="chip ativo" data-filtro="TODOS">Todos</button>
-        <button class="chip chip-faq" data-filtro="FAQ">FAQs</button>
-        <button class="chip chip-tab" data-filtro="TAB">Tabulações</button>
+        <button class="chip ativo" data-filtro="TODOS" aria-pressed="true">Todos</button>
+        <button class="chip chip-faq" data-filtro="FAQ" aria-pressed="false">FAQs</button>
+        <button class="chip chip-tab" data-filtro="TAB" aria-pressed="false">Tabulações</button>
       </div>
 
       <!-- Eixo independente do tipo: combina com qualquer outro filtro -->
@@ -1456,7 +2110,7 @@ mark {
     </div>
 
     <!-- Contadores -->
-    <div class="contadores" id="contadores">
+    <div class="contadores" id="contadores" role="status" aria-live="polite" aria-atomic="true">
       <span class="contador contador-faq"><strong id="qtd-faq">0</strong> FAQs</span>
       <span class="separador">·</span>
       <span class="contador contador-tab"><strong id="qtd-tab">0</strong> Tabulações</span>
@@ -1464,11 +2118,13 @@ mark {
       <span class="contador contador-fav"><strong id="qtd-fav">0</strong> favoritos</span>
       <span class="separador" id="sep-resultados" hidden>·</span>
       <span class="contador" id="qtd-resultados" hidden></span>
+      <button class="btn-limpar" id="btn-limpar" hidden>✕ Limpar filtros</button>
+      <button class="btn-limpar btn-atualizar" id="btn-atualizar" title="Buscar cadastros novos">↻ Atualizar</button>
     </div>
   </div>
 
   <!-- Esqueleto de carregamento -->
-  <div id="skeleton" class="lista-cards">
+  <div id="skeleton" class="lista-cards" role="status" aria-label="Carregando registros">
     <div class="card skeleton"></div>
     <div class="card skeleton"></div>
     <div class="card skeleton"></div>
@@ -1478,12 +2134,20 @@ mark {
   <!-- Lista de registros -->
   <div id="lista-cards" class="lista-cards" hidden></div>
 
+  <!-- Carrega mais registros ao entrar na área visível -->
+  <div id="sentinela" class="sentinela" hidden>
+    <span class="sentinela-texto">Carregando mais registros…</span>
+  </div>
+
   <!-- Estado vazio -->
   <div id="estado-vazio" class="estado-vazio" hidden>
     <div class="vazio-icone">📭</div>
     <h3 id="vazio-titulo">Nenhum registro encontrado</h3>
     <p id="vazio-texto">Ajuste a pesquisa ou cadastre um novo conteúdo.</p>
-    <button class="btn btn-primario" id="btn-vazio-novo">➕ Novo Cadastro</button>
+    <div class="vazio-acoes">
+      <button class="btn btn-ghost" id="btn-vazio-limpar" hidden>✕ Limpar filtros</button>
+      <button class="btn btn-primario" id="btn-vazio-novo">➕ Novo Cadastro</button>
+    </div>
   </div>
 
 </section>
@@ -1500,9 +2164,9 @@ mark {
     <!-- Tipo -->
     <div class="grupo-campo">
       <label class="rotulo">Tipo</label>
-      <div class="segmentado" id="seg-tipo">
-        <button type="button" class="seg-opcao ativo" data-tipo="FAQ">FAQ</button>
-        <button type="button" class="seg-opcao" data-tipo="TAB">Tabulação</button>
+      <div class="segmentado" id="seg-tipo" role="group" aria-label="Tipo do registro">
+        <button type="button" class="seg-opcao ativo" data-tipo="FAQ" aria-pressed="true">FAQ</button>
+        <button type="button" class="seg-opcao" data-tipo="TAB" aria-pressed="false">Tabulação</button>
       </div>
     </div>
 
@@ -1513,11 +2177,13 @@ mark {
         <input
           type="text"
           id="campo-categoria"
+          aria-required="true"
           list="lista-categorias"
           placeholder="Ex.: Cartão de crédito"
           maxlength="80"
           autocomplete="off">
         <datalist id="lista-categorias"></datalist>
+        <span class="erro-campo" id="erro-categoria" role="alert" hidden></span>
       </div>
 
       <div class="grupo-campo">
@@ -1544,9 +2210,11 @@ mark {
       <input
         type="text"
         id="campo-descricao"
+          aria-required="true"
         placeholder="Ex.: Qual motivo?"
         maxlength="200"
         autocomplete="off">
+      <span class="erro-campo" id="erro-descricao" role="alert" hidden></span>
     </div>
 
     <!-- Texto -->
@@ -1554,8 +2222,10 @@ mark {
       <label class="rotulo" for="campo-texto">Texto</label>
       <textarea
         id="campo-texto"
+        aria-required="true"
         rows="8"
         placeholder="Texto completo que será copiado pelo atendente…"></textarea>
+      <span class="erro-campo" id="erro-texto" role="alert" hidden></span>
       <span class="dica-campo"><span id="contagem-texto">0</span> caracteres</span>
     </div>
 
@@ -1570,12 +2240,205 @@ mark {
 
 </section>
 
+      <!-- ============================================================
+     DASHBOARD — Indicadores
+     Todo o conteúdo é calculado a partir do cache local já
+     carregado. Nenhuma chamada extra ao servidor.
+     ============================================================ -->
+<section id="view-dashboard" hidden>
+
+  <header class="painel-cabecalho">
+    <div>
+      <h2>Indicadores</h2>
+      <p class="form-subtitulo" id="dash-atualizado">Calculado a partir dos dados já carregados.</p>
+    </div>
+    <button class="btn btn-ghost" id="btn-dash-voltar">← Voltar à base</button>
+  </header>
+
+  <!-- Números principais -->
+  <div class="dash-numeros" id="dash-numeros"></div>
+
+  <div class="dash-colunas">
+
+    <!-- Distribuição por categoria -->
+    <section class="dash-bloco">
+      <h3 class="dash-titulo">
+        Registros por categoria
+        <span class="dash-dica">clique para filtrar</span>
+      </h3>
+      <div class="dash-barras" id="dash-categorias"></div>
+    </section>
+
+    <!-- Subcategorias mais usadas -->
+    <section class="dash-bloco">
+      <h3 class="dash-titulo">
+        Subcategorias mais usadas
+        <span class="dash-dica">clique para filtrar</span>
+      </h3>
+      <div class="dash-barras" id="dash-subcategorias"></div>
+    </section>
+
+    <!-- Quem mais cadastra -->
+    <section class="dash-bloco">
+      <h3 class="dash-titulo">Quem mais cadastra</h3>
+      <div class="dash-barras" id="dash-autores"></div>
+    </section>
+
+    <!-- Últimas alterações -->
+    <section class="dash-bloco">
+      <h3 class="dash-titulo">Últimas alterações</h3>
+      <ul class="dash-recentes" id="dash-recentes"></ul>
+    </section>
+
+  </div>
+
+  <!-- Pendência de classificação: acionável -->
+  <section class="dash-bloco dash-pendencia" id="dash-pendencia" hidden>
+    <h3 class="dash-titulo">Pendente de classificação</h3>
+    <p id="dash-pendencia-texto"></p>
+    <button class="btn btn-ghost" id="btn-dash-pendencia">Ver registros sem subcategoria</button>
+  </section>
+
+</section>
+
+      <!-- ============================================================
+     CONFIGURAÇÕES — Preferências do usuário
+     Tudo é salvo no navegador (localStorage). Nada vai para a
+     planilha, então cada pessoa ajusta o sistema ao seu jeito
+     sem afetar os colegas.
+     ============================================================ -->
+<section id="view-config" hidden>
+
+  <header class="painel-cabecalho">
+    <div>
+      <h2>Configurações</h2>
+      <p class="form-subtitulo">Preferências salvas neste navegador. Não afetam os outros usuários.</p>
+    </div>
+    <button class="btn btn-ghost" id="btn-config-voltar">← Voltar à base</button>
+  </header>
+
+  <div class="config-blocos">
+
+    <!-- Tema -->
+    <section class="config-bloco">
+      <h3 class="config-titulo">Tema</h3>
+      <div class="config-temas" id="config-temas" role="radiogroup" aria-label="Tema do sistema"></div>
+    </section>
+
+    <!-- Aparência -->
+    <section class="config-bloco">
+      <h3 class="config-titulo">Aparência</h3>
+
+      <div class="config-opcao">
+        <div class="config-rotulo">
+          <span>Densidade</span>
+          <span class="config-ajuda">Compacta mostra mais registros por tela.</span>
+        </div>
+        <div class="segmentado" role="group" aria-label="Densidade">
+          <button type="button" class="seg-opcao" data-pref="densidade" data-valor="confortavel">Confortável</button>
+          <button type="button" class="seg-opcao" data-pref="densidade" data-valor="compacta">Compacta</button>
+        </div>
+      </div>
+
+      <div class="config-opcao">
+        <div class="config-rotulo">
+          <span>Linhas visíveis no card</span>
+          <span class="config-ajuda">Antes do botão “Ver mais” aparecer.</span>
+        </div>
+        <div class="segmentado" role="group" aria-label="Linhas visíveis no card">
+          <button type="button" class="seg-opcao" data-pref="linhas" data-valor="3">3</button>
+          <button type="button" class="seg-opcao" data-pref="linhas" data-valor="4">4</button>
+          <button type="button" class="seg-opcao" data-pref="linhas" data-valor="8">8</button>
+        </div>
+      </div>
+
+      <div class="config-opcao">
+        <div class="config-rotulo">
+          <span>Animações</span>
+          <span class="config-ajuda">Desligue se preferir a interface sem transições.</span>
+        </div>
+        <div class="segmentado" role="group" aria-label="Animações">
+          <button type="button" class="seg-opcao" data-pref="animacoes" data-valor="ligadas">Ligadas</button>
+          <button type="button" class="seg-opcao" data-pref="animacoes" data-valor="reduzidas">Reduzidas</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Comportamento da lista e da busca -->
+    <section class="config-bloco">
+      <h3 class="config-titulo">Lista e busca</h3>
+
+      <div class="config-opcao">
+        <div class="config-rotulo">
+          <span>Agrupar por categoria</span>
+          <span class="config-ajuda">Durante a busca a lista fica sempre plana.</span>
+        </div>
+        <div class="segmentado" role="group" aria-label="Agrupar por categoria">
+          <button type="button" class="seg-opcao" data-pref="agrupar" data-valor="sim">Sim</button>
+          <button type="button" class="seg-opcao" data-pref="agrupar" data-valor="nao">Não</button>
+        </div>
+      </div>
+
+      <div class="config-opcao">
+        <div class="config-rotulo">
+          <span>Sugerir buscas recentes</span>
+          <span class="config-ajuda">Abre o histórico ao clicar no campo vazio.</span>
+        </div>
+        <div class="segmentado" role="group" aria-label="Sugerir buscas recentes">
+          <button type="button" class="seg-opcao" data-pref="historico" data-valor="sim">Sim</button>
+          <button type="button" class="seg-opcao" data-pref="historico" data-valor="nao">Não</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Atalhos -->
+    <section class="config-bloco">
+      <h3 class="config-titulo">Atalhos de teclado</h3>
+      <ul class="config-atalhos">
+        <li><kbd>Ctrl</kbd> <kbd>K</kbd> <span>Ir para a busca</span></li>
+        <li><kbd>Ctrl</kbd> <kbd>N</kbd> <span>Novo cadastro</span></li>
+        <li><kbd>Esc</kbd> <span>Fechar histórico, diálogo ou formulário</span></li>
+        <li><kbd>Tab</kbd> <span>Navegar entre os controles</span></li>
+      </ul>
+    </section>
+
+    <!-- Lixeira -->
+    <section class="config-bloco config-lixeira">
+      <h3 class="config-titulo">
+        Lixeira
+        <button class="btn-limpar" id="btn-lixeira-carregar">Carregar</button>
+      </h3>
+      <p class="config-ajuda">
+        Registros excluídos vão para a aba <strong>LIXEIRA</strong> da planilha,
+        com autor e data. Nada é apagado em definitivo pelo sistema.
+      </p>
+      <div id="config-lixeira-lista"></div>
+    </section>
+
+    <!-- Dados locais -->
+    <section class="config-bloco">
+      <h3 class="config-titulo">Dados deste navegador</h3>
+      <p class="config-ajuda" id="config-resumo-local"></p>
+      <div class="config-acoes">
+        <button class="btn btn-ghost" id="btn-config-limpar-historico">Limpar histórico de buscas</button>
+        <button class="btn btn-ghost" id="btn-config-limpar-favoritos">Limpar favoritos</button>
+        <button class="btn btn-ghost" id="btn-config-restaurar">Restaurar padrões</button>
+      </div>
+      <p class="config-ajuda config-aviso">
+        Nada aqui altera a planilha: FAQs e tabulações permanecem intactas.
+      </p>
+    </section>
+
+  </div>
+
+</section>
+
     </main>
 
   </div>
 
   <!-- ===================== TOASTS ===================== -->
-  <div id="toasts" aria-live="polite"></div>
+  <div id="toasts" role="status" aria-live="polite" aria-atomic="true"></div>
 
   <!-- ===================== MODAL DE CONFIRMAÇÃO ===================== -->
   <div class="modal-overlay" id="modal-confirmar" hidden>
@@ -1584,7 +2447,7 @@ mark {
       <p id="modal-mensagem">Tem certeza que deseja excluir este registro? Esta ação não pode ser desfeita.</p>
       <div class="modal-acoes">
         <button class="btn btn-ghost" id="modal-cancelar">Cancelar</button>
-        <button class="btn btn-perigo" id="modal-confirmar-btn">Excluir</button>
+        <button class="btn btn-perigo" id="modal-confirmar-btn" autofocus>Excluir</button>
       </div>
     </div>
   </div>
@@ -1633,7 +2496,14 @@ mark {
     editandoId: null,         // ID em edição (null = novo cadastro)
     tipoForm: 'FAQ',
     salvando: false,
-    confirmarAcao: null       // callback do modal de confirmação
+    confirmarAcao: null,      // callback do modal de confirmação
+    focoAnterior: null,       // elemento que abriu o modal
+    tela: 'home',             // home | cadastro | dashboard | config
+    prefs: {},                // preferências do usuário (localStorage)
+    limite: 0,                // quantos cards já foram renderizados
+    assinatura: '',           // combinação de filtros do último desenho
+    carregadoEm: 0,           // timestamp da última leitura do servidor
+    revalidando: false
   };
 
   const $ = (sel) => document.querySelector(sel);
@@ -1823,20 +2693,82 @@ mark {
    * Persistência local (tema e favoritos)
    * -------------------------------------------------------- */
 
+  /**
+   * Preferências do usuário, com os padrões atuais do sistema.
+   * Alterar um padrão aqui muda o comportamento de quem nunca
+   * abriu a tela de configurações.
+   */
+  const PADROES = {
+    tema: 'portobank',
+    densidade: 'confortavel',
+    linhas: '4',
+    animacoes: 'ligadas',
+    agrupar: 'sim',
+    historico: 'sim'
+  };
+
   function carregarPreferencias() {
+    Estado.prefs = Object.assign({}, PADROES);
+
     try {
-      const tema = localStorage.getItem('bc_tema');
-      if (tema && TEMAS.some(t => t.id === tema)) aplicarTema(tema, false);
-      else aplicarTema('portobank', false);
+      const salvas = JSON.parse(localStorage.getItem('bc_prefs') || '{}');
+      Object.keys(PADROES).forEach(chave => {
+        if (salvas[chave] !== undefined) Estado.prefs[chave] = salvas[chave];
+      });
+
+      // Compatibilidade: versões anteriores guardavam o tema em chave própria.
+      const temaAntigo = localStorage.getItem('bc_tema');
+      if (salvas.tema === undefined && temaAntigo) Estado.prefs.tema = temaAntigo;
 
       const favs = JSON.parse(localStorage.getItem('bc_favoritos') || '[]');
       Estado.favoritos = new Set(favs);
-    } catch (e) {
-      aplicarTema('portobank', false);
-    }
+    } catch (e) { /* armazenamento indisponível — segue com os padrões */ }
 
+    if (!TEMAS.some(t => t.id === Estado.prefs.tema)) Estado.prefs.tema = PADROES.tema;
+
+    aplicarPreferencias();
     carregarHistorico();
   }
+
+  function salvarPreferencias() {
+    try {
+      localStorage.setItem('bc_prefs', JSON.stringify(Estado.prefs));
+    } catch (e) { /* ignora */ }
+  }
+
+  /** Reflete as preferências no documento (atributos lidos pelo CSS). */
+  function aplicarPreferencias() {
+    const p = Estado.prefs;
+    const raiz = document.documentElement;
+
+    raiz.setAttribute('data-theme', p.tema);
+    raiz.setAttribute('data-densidade', p.densidade);
+    raiz.setAttribute('data-animacoes', p.animacoes);
+    raiz.style.setProperty('--linhas-card', p.linhas);
+  }
+
+  /**
+   * Altera uma preferência, persiste e reaplica o que for necessário.
+   * @param {string} chave
+   * @param {string} valor
+   */
+  function definirPreferencia(chave, valor) {
+    if (Estado.prefs[chave] === valor) return;
+
+    Estado.prefs[chave] = valor;
+    salvarPreferencias();
+    aplicarPreferencias();
+    marcarPreferenciasNaTela();
+
+    // Só o agrupamento muda o que é desenhado na lista.
+    if (chave === 'agrupar') renderizar();
+  }
+
+  /** Quantos cards entram por lote na renderização incremental. */
+  const LOTE = 60;
+
+  /** Intervalo mínimo entre revalidações automáticas (5 minutos). */
+  const INTERVALO_REVALIDACAO = 5 * 60 * 1000;
 
   /** Máximo de buscas guardadas no histórico. */
   const LIMITE_HISTORICO = 8;
@@ -1899,18 +2831,10 @@ mark {
     } catch (e) { /* armazenamento indisponível — ignora */ }
   }
 
-  function aplicarTema(id, notificar) {
-    document.documentElement.setAttribute('data-theme', id);
-    try { localStorage.setItem('bc_tema', id); } catch (e) { /* ignora */ }
+  function aplicarTema(id) {
+    definirPreferencia('tema', id);
     const tema = TEMAS.find(t => t.id === id);
-    $('#tema-nome').textContent = tema ? tema.nome : 'Tema';
-    if (notificar) toast('Tema ' + tema.nome + ' aplicado.');
-  }
-
-  function alternarTema() {
-    const atual = document.documentElement.getAttribute('data-theme') || 'portobank';
-    const indice = TEMAS.findIndex(t => t.id === atual);
-    aplicarTema(TEMAS[(indice + 1) % TEMAS.length].id, true);
+    if (tema) toast('Tema ' + tema.nome + ' aplicado.');
   }
 
   /* ----------------------------------------------------------
@@ -1922,6 +2846,7 @@ mark {
       const resposta = await servidor('getAllRecords');
       Estado.registros = (resposta.registros || []).map(indexar);
       Estado.carregado = true;
+      Estado.carregadoEm = Date.now();
       $('#skeleton').hidden = true;
       atualizarCategorias();
       renderizar();
@@ -1931,6 +2856,54 @@ mark {
       $('#vazio-titulo').textContent = 'Não foi possível carregar os dados';
       $('#vazio-texto').textContent = erro.message + ' Recarregue a página para tentar novamente.';
       toast('Erro ao carregar registros.', 'erro');
+    }
+  }
+
+  /**
+   * CORREÇÃO B-03 — revalidação do cache.
+   *
+   * Os dados eram lidos uma única vez por sessão, então dois atendentes
+   * trabalhando ao mesmo tempo não viam os cadastros um do outro até
+   * recarregar a página — o que gera cadastro duplicado e uso de texto
+   * desatualizado. Agora há atualização manual e automática ao voltar
+   * para a aba, respeitando um intervalo mínimo.
+   *
+   * @param {boolean} silencioso - Não avisa quando nada mudou.
+   */
+  async function revalidar(silencioso) {
+    if (Estado.revalidando) return;
+
+    Estado.revalidando = true;
+    const botao = $('#btn-atualizar');
+    botao.classList.add('girando');
+
+    try {
+      const resposta = await servidor('getAllRecords');
+      const novos = (resposta.registros || []).map(indexar);
+
+      const antes = new Set(Estado.registros.map(r => r.id));
+      const incluidos = novos.filter(r => !antes.has(r.id)).length;
+      const removidos = Estado.registros.filter(r => !novos.some(n => n.id === r.id)).length;
+
+      Estado.registros = novos;
+      Estado.carregadoEm = Date.now();
+
+      atualizarCategorias();
+      renderizar();
+
+      if (incluidos || removidos) {
+        const partes = [];
+        if (incluidos) partes.push(incluidos + ' novo' + (incluidos > 1 ? 's' : ''));
+        if (removidos) partes.push(removidos + ' removido' + (removidos > 1 ? 's' : ''));
+        toast('Base atualizada: ' + partes.join(' e ') + '.');
+      } else if (!silencioso) {
+        toast('Tudo já estava atualizado.');
+      }
+    } catch (erro) {
+      if (!silencioso) toast(erro.message, 'erro');
+    } finally {
+      Estado.revalidando = false;
+      botao.classList.remove('girando');
     }
   }
 
@@ -2087,6 +3060,46 @@ mark {
       subs.sort(ordemPtBr).map(sub => `<option value="${escaparHtml(sub)}">`).join('');
   }
 
+  /** Há algum filtro ou busca ativa? Usado pelo contador e pelo botão de limpar. */
+  function temFiltroAtivo() {
+    return !!(Estado.busca.trim() || Estado.filtroTipo !== 'TODOS' ||
+              Estado.filtroCategoria || Estado.filtroSubcategoria ||
+              Estado.somenteFavoritos);
+  }
+
+  /** Zera os filtros sem avisar o usuário — uso interno antes de aplicar outro. */
+  function limparFiltrosSilencioso() {
+    Estado.busca = '';
+    Estado.filtroTipo = 'TODOS';
+    Estado.filtroCategoria = '';
+    Estado.filtroSubcategoria = '';
+    Estado.somenteFavoritos = false;
+
+    $('#campo-pesquisa').value = '';
+    $('#filtro-categoria').value = '';
+
+    $$('.chip').forEach(c => {
+      const ativo = c.dataset.filtro === 'TODOS';
+      c.classList.toggle('ativo', ativo);
+      c.setAttribute('aria-pressed', String(ativo));
+    });
+
+    const favoritos = $('#btn-favoritos');
+    favoritos.classList.remove('ativo');
+    favoritos.setAttribute('aria-pressed', 'false');
+    favoritos.querySelector('.btn-favoritos-icone').textContent = '☆';
+
+    fecharHistorico();
+  }
+
+  /** Devolve a lista ao estado inicial, sem recarregar dados do servidor. */
+  function limparFiltros() {
+    limparFiltrosSilencioso();
+    atualizarSubcategorias();
+    renderizar();
+    toast('Filtros limpos.');
+  }
+
   /**
    * Aplica filtros e busca sobre o cache local.
    * Múltiplas palavras funcionam como AND implícito: "cartao cancelamento"
@@ -2131,29 +3144,34 @@ mark {
     const editado = r.ultimaAlteracao && r.ultimaAlteracao !== r.dataCriacao;
     const rotuloTipo = r.tipo === 'FAQ' ? 'FAQ' : 'Tabulação';
 
-    // Caminho hierárquico: Categoria › Subcategoria
-    const caminho = r.subcategoria
-      ? destacar(r.categoria, r._n.categoria, termos) +
-        '<span class="caminho-sep">›</span>' +
-        destacar(r.subcategoria, r._n.subcategoria, termos)
-      : destacar(r.categoria, r._n.categoria, termos);
+    // Caminho hierárquico como pílulas: informação de localização
+    // precisa ser reconhecível de relance, não texto secundário.
+    const caminho =
+      `<span class="pilula pilula-categoria">${destacar(r.categoria, r._n.categoria, termos)}</span>` +
+      (r.subcategoria
+        ? `<span class="pilula pilula-subcategoria">${destacar(r.subcategoria, r._n.subcategoria, termos)}</span>`
+        : '');
     const caminhoSimples = r.subcategoria ? r.categoria + ' › ' + r.subcategoria : r.categoria;
 
     return `
       <article class="card tipo-${r.tipo} ${favorito ? 'favorito' : ''}" data-id="${r.id}"
+               aria-label="${rotuloTipo}: ${escaparHtml(r.descricao)} — ${escaparHtml(caminhoSimples)}"
                style="--matiz:${matizCategoria(r.categoria)}">
         <div class="card-topo">
           <span class="badge badge-${r.tipo}">${rotuloTipo}</span>
-          <span class="ponto-categoria" aria-hidden="true"></span>
-          <span class="card-categoria" title="${escaparHtml(caminhoSimples)}">${caminho}</span>
+          <span class="caminho" title="${escaparHtml(caminhoSimples)}">${caminho}</span>
           <button class="btn-favorito ${favorito ? 'ativo' : ''}" data-acao="favoritar"
+                  aria-pressed="${favorito}"
+                  aria-label="${favorito ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}: ${escaparHtml(r.descricao)}"
                   title="${favorito ? 'Remover dos favoritos' : 'Favoritar'}">${favorito ? '⭐' : '☆'}</button>
         </div>
 
         <h3 class="card-descricao">${destacar(r.descricao, r._n.descricao, termos)}</h3>
 
         <div class="card-texto ${longo && !expandido ? 'recolhido' : ''}">${destacar(r.texto, r._n.texto, termos)}</div>
-        ${longo ? `<button class="btn-expandir" data-acao="expandir">${expandido ? 'Ver menos ▲' : 'Ver mais ▼'}</button>` : ''}
+        ${longo ? `<button class="btn-expandir" data-acao="expandir"
+                    aria-expanded="${expandido}"
+                    aria-label="${expandido ? 'Recolher' : 'Expandir'} o texto de ${escaparHtml(r.descricao)}">${expandido ? 'Ver menos ▲' : 'Ver mais ▼'}</button>` : ''}
 
         <div class="card-rodape">
           <div class="card-meta">
@@ -2161,13 +3179,66 @@ mark {
             <span>🕐 ${escaparHtml(r.dataCriacao)}${editado ? ' · editado em ' + escaparHtml(r.ultimaAlteracao) : ''}</span>
           </div>
           <div class="card-acoes">
-            <button class="btn-copiar" data-acao="copiar" title="Copiar texto">📋 Copiar</button>
-            <button class="btn-icone" data-acao="editar" title="Editar">✏️</button>
-            <button class="btn-icone" data-acao="imprimir" title="Imprimir / PDF">🖨️</button>
-            <button class="btn-icone" data-acao="excluir" title="Excluir">🗑️</button>
+            <button class="btn-copiar" data-acao="copiar"
+                    aria-label="Copiar o texto de ${escaparHtml(r.descricao)}"
+                    title="Copiar texto"><span aria-hidden="true">📋</span> Copiar</button>
+            <button class="btn-icone" data-acao="editar"
+                    aria-label="Editar ${escaparHtml(r.descricao)}" title="Editar">✏️</button>
+            <button class="btn-icone" data-acao="imprimir"
+                    aria-label="Imprimir ${escaparHtml(r.descricao)}" title="Imprimir / PDF">🖨️</button>
+            <button class="btn-icone" data-acao="excluir"
+                    aria-label="Excluir ${escaparHtml(r.descricao)}" title="Excluir">🗑️</button>
           </div>
         </div>
       </article>`;
+  }
+
+  /**
+   * Agrupa os resultados por um nível da hierarquia.
+   *
+   * Sem categoria filtrada, agrupa por categoria. Com uma categoria já
+   * escolhida, agrupar por ela seria redundante — então desce um nível
+   * e agrupa por subcategoria.
+   *
+   * @param {Array} resultados
+   * @returns {Array<[string, Array]>} Pares [rótulo, registros].
+   */
+  function agrupar(resultados) {
+    const porSub = !!Estado.filtroCategoria;
+    const SEM = porSub ? 'Sem subcategoria' : 'Sem categoria';
+
+    const mapa = new Map();
+    resultados.forEach(r => {
+      const chave = (porSub ? r.subcategoria : r.categoria) || SEM;
+      if (!mapa.has(chave)) mapa.set(chave, []);
+      mapa.get(chave).push(r);
+    });
+
+    // Alfabético, com o grupo "sem classificação" sempre no fim.
+    return [...mapa.entries()].sort((a, b) => {
+      if (a[0] === SEM) return 1;
+      if (b[0] === SEM) return -1;
+      return ordemPtBr(a[0], b[0]);
+    });
+  }
+
+  /** Monta o HTML de um grupo com cabeçalho fixo. */
+  function htmlGrupo(rotulo, itens, termos) {
+    // Agrupando por subcategoria, a cor de referência continua sendo a
+    // da categoria filtrada — mantém a identidade visual do recorte.
+    const base = Estado.filtroCategoria || rotulo;
+
+    return `
+      <section class="grupo" style="--matiz:${matizCategoria(base)}">
+        <h2 class="grupo-cabecalho">
+          <span class="grupo-marca" aria-hidden="true"></span>
+          <span class="grupo-nome">${escaparHtml(rotulo)}</span>
+          <span class="grupo-contagem">${itens.length}</span>
+        </h2>
+        <div class="grupo-corpo lista-cards">
+          ${itens.map(r => htmlCard(r, termos)).join('')}
+        </div>
+      </section>`;
   }
 
   /** Renderiza a lista completa e os contadores. */
@@ -2184,9 +3255,8 @@ mark {
     atualizarContadorFavoritos();
 
     // Contador de resultados (só aparece quando há filtro/busca ativa).
-    const filtrando = Estado.busca.trim() || Estado.filtroTipo !== 'TODOS' ||
-                      Estado.filtroCategoria || Estado.filtroSubcategoria ||
-                      Estado.somenteFavoritos;
+    const filtrando = temFiltroAtivo();
+    $('#btn-limpar').hidden = !filtrando;
     $('#sep-resultados').hidden = !filtrando;
     $('#qtd-resultados').hidden = !filtrando;
     if (filtrando) {
@@ -2196,6 +3266,7 @@ mark {
     if (!resultados.length) {
       lista.hidden = true;
       vazio.hidden = false;
+      $('#btn-vazio-limpar').hidden = !filtrando;
       if (Estado.somenteFavoritos && !Estado.favoritos.size) {
         $('#vazio-titulo').textContent = 'Você ainda não favoritou nada';
         $('#vazio-texto').textContent =
@@ -2215,7 +3286,38 @@ mark {
     lista.hidden = false;
 
     const termos = termosBusca();
-    lista.innerHTML = resultados.map(r => htmlCard(r, termos)).join('');
+
+    // OTIMIZAÇÃO P-04 — renderização incremental.
+    // Mudou o recorte (busca ou filtro)? Recomeça do primeiro lote.
+    // Sem isso, filtrar depois de rolar muito manteria centenas de
+    // cards no DOM sem necessidade.
+    const assinatura = [Estado.busca, Estado.filtroTipo, Estado.filtroCategoria,
+                        Estado.filtroSubcategoria, Estado.somenteFavoritos].join('|');
+    if (assinatura !== Estado.assinatura) {
+      Estado.assinatura = assinatura;
+      Estado.limite = LOTE;
+    }
+
+    const visiveis = resultados.slice(0, Estado.limite);
+    const restantes = resultados.length - visiveis.length;
+
+    // Durante a busca a lista fica plana: o que importa é o resultado,
+    // não a gaveta em que ele mora. Sem busca, o agrupamento transforma
+    // a lista em navegação hierárquica.
+    const agrupado = Estado.prefs.agrupar === 'sim' && !termos.length && visiveis.length > 1;
+    lista.classList.toggle('agrupada', agrupado);
+
+    lista.innerHTML = agrupado
+      ? agrupar(visiveis).map(par => htmlGrupo(par[0], par[1], termos)).join('')
+      : visiveis.map(r => htmlCard(r, termos)).join('');
+
+    // A sentinela só existe enquanto houver o que carregar.
+    const sentinela = $('#sentinela');
+    sentinela.hidden = restantes <= 0;
+    if (restantes > 0) {
+      sentinela.querySelector('.sentinela-texto').textContent =
+        `Mostrando ${visiveis.length} de ${resultados.length} — role para ver mais`;
+    }
   }
 
   /* ----------------------------------------------------------
@@ -2275,6 +3377,7 @@ mark {
     botao.classList.toggle('ativo', favorito);
     botao.textContent = favorito ? '⭐' : '☆';
     botao.title = favorito ? 'Remover dos favoritos' : 'Favoritar';
+    botao.setAttribute('aria-pressed', String(favorito));
 
     atualizarContadorFavoritos();
 
@@ -2299,7 +3402,10 @@ mark {
 
     card.querySelector('.card-texto').classList.toggle('recolhido', !expandido);
     const botao = card.querySelector('[data-acao="expandir"]');
-    if (botao) botao.textContent = expandido ? 'Ver menos ▲' : 'Ver mais ▼';
+    if (botao) {
+      botao.textContent = expandido ? 'Ver menos ▲' : 'Ver mais ▼';
+      botao.setAttribute('aria-expanded', String(expandido));
+    }
   }
 
   function imprimirRegistro(r) {
@@ -2331,21 +3437,81 @@ mark {
         toast(erro.message, 'erro');
       }
     };
+    Estado.focoAnterior = document.activeElement;
     $('#modal-confirmar').hidden = false;
+    $('#modal-confirmar-btn').focus();
+  }
+
+  /**
+   * AC-02 — gestão de foco do modal.
+   *
+   * Antes, o Tab continuava navegando pelos elementos ATRÁS do modal e,
+   * ao fechar, o foco ia para o <body>: quem usa teclado perdia a
+   * posição na lista. Agora o foco fica preso no diálogo e retorna ao
+   * botão que o abriu.
+   */
+  function elementosFocaveis(container) {
+    return $$('#' + container.id + ' button:not([disabled])');
+  }
+
+  function prenderFoco(e) {
+    const modal = $('#modal-confirmar');
+    if (modal.hidden || e.key !== 'Tab') return;
+
+    const focaveis = elementosFocaveis(modal);
+    if (!focaveis.length) return;
+
+    const primeiro = focaveis[0];
+    const ultimo = focaveis[focaveis.length - 1];
+
+    if (e.shiftKey && document.activeElement === primeiro) {
+      e.preventDefault();
+      ultimo.focus();
+    } else if (!e.shiftKey && document.activeElement === ultimo) {
+      e.preventDefault();
+      primeiro.focus();
+    }
   }
 
   function fecharModal() {
     $('#modal-confirmar').hidden = true;
     Estado.confirmarAcao = null;
+
+    // Devolve o foco a quem abriu o diálogo.
+    if (Estado.focoAnterior && document.contains(Estado.focoAnterior)) {
+      Estado.focoAnterior.focus();
+    }
+    Estado.focoAnterior = null;
   }
 
   /* ----------------------------------------------------------
    * Navegação entre telas
    * -------------------------------------------------------- */
 
+  /**
+   * Telas do sistema. Antes o atributo hidden era manipulado em quatro
+   * lugares diferentes (achado C-02); agora existe um ponto único, o que
+   * também evita duas telas visíveis ao mesmo tempo quando surge uma nova.
+   */
+  const TELAS = {
+    home: '#view-home',
+    cadastro: '#view-cadastro',
+    dashboard: '#view-dashboard',
+    config: '#view-config'
+  };
+
+  function irPara(tela) {
+    Object.keys(TELAS).forEach(nome => {
+      $(TELAS[nome]).hidden = nome !== tela;
+    });
+    Estado.tela = tela;
+    $('#btn-dashboard').setAttribute('aria-current', tela === 'dashboard' ? 'page' : 'false');
+    $('#btn-config').setAttribute('aria-current', tela === 'config' ? 'page' : 'false');
+    window.scrollTo({ top: 0 });
+  }
+
   function mostrarHome() {
-    $('#view-cadastro').hidden = true;
-    $('#view-home').hidden = false;
+    irPara('home');
     Estado.editandoId = null;
   }
 
@@ -2370,16 +3536,16 @@ mark {
     atualizarPreviaCaminho();
     limparInvalidos();
 
-    $('#view-home').hidden = true;
-    $('#view-cadastro').hidden = false;
+    irPara('cadastro');
     $('#campo-categoria').focus();
-    window.scrollTo({ top: 0 });
   }
 
   function definirTipoForm(tipo) {
     Estado.tipoForm = tipo;
     $$('#seg-tipo .seg-opcao').forEach(btn => {
-      btn.classList.toggle('ativo', btn.dataset.tipo === tipo);
+      const ativo = btn.dataset.tipo === tipo;
+      btn.classList.toggle('ativo', ativo);
+      btn.setAttribute('aria-pressed', String(ativo));
     });
   }
 
@@ -2407,7 +3573,285 @@ mark {
   }
 
   function limparInvalidos() {
-    $$('.invalido').forEach(el => el.classList.remove('invalido'));
+    $$('.invalido').forEach(el => {
+      el.classList.remove('invalido');
+      el.removeAttribute('aria-invalid');
+      el.removeAttribute('aria-describedby');
+    });
+    ['categoria', 'descricao', 'texto'].forEach(campo => {
+      const alvo = $('#erro-' + campo);
+      if (alvo) { alvo.textContent = ''; alvo.hidden = true; }
+    });
+  }
+
+  /**
+   * AC-03 — erro anunciado junto ao campo.
+   * O toast sozinho não diz QUAL campo falhou para quem usa leitor de tela.
+   * @param {string} campo - Sufixo do id (categoria, descricao, texto).
+   * @param {string} mensagem
+   */
+  function marcarInvalido(campo, mensagem) {
+    const entrada = $('#campo-' + campo);
+    const alvo = $('#erro-' + campo);
+
+    entrada.classList.add('invalido');
+    entrada.setAttribute('aria-invalid', 'true');
+
+    if (alvo) {
+      alvo.textContent = '⚠ ' + mensagem;
+      alvo.hidden = false;
+      entrada.setAttribute('aria-describedby', alvo.id);
+    }
+    entrada.focus();
+  }
+
+  /* ----------------------------------------------------------
+   * Dashboard — tudo derivado do cache, sem ida ao servidor
+   * -------------------------------------------------------- */
+
+  /** Quantos itens exibir nas listas de ranking. */
+  const TOPO_RANKING = 8;
+
+  /**
+   * Conta ocorrências de um campo e devolve o ranking decrescente.
+   * @param {Array} registros
+   * @param {Function} extrair - Recebe o registro, devolve a chave (ou '').
+   * @returns {Array<{chave: string, total: number, faq: number, tab: number}>}
+   */
+  function ranking(registros, extrair) {
+    const mapa = new Map();
+
+    registros.forEach(r => {
+      const chave = extrair(r);
+      if (!chave) return;
+      if (!mapa.has(chave)) mapa.set(chave, { chave: chave, total: 0, faq: 0, tab: 0 });
+      const item = mapa.get(chave);
+      item.total++;
+      if (r.tipo === 'FAQ') item.faq++; else item.tab++;
+    });
+
+    // Empate resolvido alfabeticamente: ordem estável entre recargas.
+    return [...mapa.values()].sort((a, b) =>
+      b.total - a.total || ordemPtBr(a.chave, b.chave));
+  }
+
+  /** Calcula todos os indicadores a partir do cache local. */
+  function calcularIndicadores() {
+    const regs = Estado.registros;
+    const faqs = regs.filter(r => r.tipo === 'FAQ').length;
+    const semSub = regs.filter(r => !r.subcategoria).length;
+
+    const categorias = ranking(regs, r => r.categoria);
+    const subcategorias = ranking(regs, r => r.subcategoria);
+    const autores = ranking(regs, r => r.criadoPor);
+
+    // Data da alteração mais recente (fallback para a criação).
+    const ultima = regs.reduce((maior, r) => {
+      const t = tempoDe(r.ultimaAlteracao || r.dataCriacao);
+      return t > maior.t ? { t: t, texto: r.ultimaAlteracao || r.dataCriacao } : maior;
+    }, { t: 0, texto: '—' });
+
+    const recentes = [...regs]
+      .sort((a, b) => tempoDe(b.ultimaAlteracao || b.dataCriacao) -
+                      tempoDe(a.ultimaAlteracao || a.dataCriacao))
+      .slice(0, 5);
+
+    return {
+      total: regs.length,
+      faqs: faqs,
+      tabs: regs.length - faqs,
+      favoritos: regs.filter(r => Estado.favoritos.has(r.id)).length,
+      categorias: categorias,
+      subcategorias: subcategorias,
+      autores: autores,
+      semSub: semSub,
+      ultima: ultima.texto,
+      recentes: recentes
+    };
+  }
+
+  /** Cartão de número principal. */
+  function htmlNumero(rotulo, valor, modificador) {
+    return `
+      <div class="dash-numero ${modificador || ''}">
+        <span class="dash-numero-valor">${valor}</span>
+        <span class="dash-numero-rotulo">${escaparHtml(rotulo)}</span>
+      </div>`;
+  }
+
+  /**
+   * Linha de barra proporcional. Acessível: cada linha é um botão com
+   * rótulo completo, então o leitor de tela recebe o dado, não a forma.
+   */
+  function htmlBarra(item, maximo, acao) {
+    const pct = maximo ? Math.round((item.total / maximo) * 100) : 0;
+    const clicavel = !!acao;
+    const rotulo = `${item.chave}: ${item.total} registro${item.total === 1 ? '' : 's'}` +
+                   (item.faq || item.tab ? ` (${item.faq} FAQ, ${item.tab} tabulação)` : '');
+
+    return `
+      <${clicavel ? 'button' : 'div'} class="dash-barra ${clicavel ? 'clicavel' : ''}"
+        ${clicavel ? `data-acao="${acao}" data-chave="${escaparHtml(item.chave)}"` : ''}
+        style="--matiz:${matizCategoria(item.chave)}"
+        aria-label="${escaparHtml(rotulo)}">
+        <span class="dash-barra-nome">${escaparHtml(item.chave)}</span>
+        <span class="dash-barra-trilho" aria-hidden="true">
+          <span class="dash-barra-preenchida" style="width:${pct}%"></span>
+        </span>
+        <span class="dash-barra-valor">${item.total}</span>
+      </${clicavel ? 'button' : 'div'}>`;
+  }
+
+  /** Desenha a tela de indicadores. */
+  function renderizarDashboard() {
+    const d = calcularIndicadores();
+
+    $('#dash-atualizado').textContent = d.total
+      ? `${d.total} registros na base · última alteração em ${d.ultima}`
+      : 'A base ainda não tem registros.';
+
+    $('#dash-numeros').innerHTML =
+      htmlNumero('FAQs', d.faqs, 'e-faq') +
+      htmlNumero('Tabulações', d.tabs, 'e-tab') +
+      htmlNumero('Categorias', d.categorias.length) +
+      htmlNumero('Subcategorias', d.subcategorias.length) +
+      htmlNumero('Favoritos', d.favoritos);
+
+    const desenhar = (alvo, lista, acao, vazio) => {
+      if (!lista.length) {
+        $(alvo).innerHTML = `<p class="dash-vazio">${vazio}</p>`;
+        return;
+      }
+      const maximo = lista[0].total;
+      $(alvo).innerHTML = lista.slice(0, TOPO_RANKING)
+        .map(item => htmlBarra(item, maximo, acao)).join('');
+    };
+
+    desenhar('#dash-categorias', d.categorias, 'filtrar-categoria', 'Nenhuma categoria cadastrada.');
+    desenhar('#dash-subcategorias', d.subcategorias, 'filtrar-subcategoria', 'Nenhuma subcategoria cadastrada ainda.');
+    desenhar('#dash-autores', d.autores, null, 'Sem autores registrados.');
+
+    $('#dash-recentes').innerHTML = d.recentes.length
+      ? d.recentes.map(r => `
+          <li>
+            <button class="dash-recente" data-acao="abrir" data-id="${r.id}">
+              <span class="badge badge-${r.tipo}">${r.tipo === 'FAQ' ? 'FAQ' : 'Tabulação'}</span>
+              <span class="dash-recente-nome">${escaparHtml(r.descricao)}</span>
+              <span class="dash-recente-data">${escaparHtml(r.ultimaAlteracao || r.dataCriacao)}</span>
+            </button>
+          </li>`).join('')
+      : '<li class="dash-vazio">Nenhuma alteração registrada.</li>';
+
+    // Pendência de classificação só aparece se houver o que classificar.
+    const pendencia = $('#dash-pendencia');
+    pendencia.hidden = d.semSub === 0;
+    if (d.semSub) {
+      const pct = Math.round((d.semSub / d.total) * 100);
+      $('#dash-pendencia-texto').textContent =
+        `${d.semSub} de ${d.total} registros (${pct}%) ainda não têm subcategoria. ` +
+        'Classificá-los melhora a localização durante o atendimento.';
+    }
+  }
+
+  /* ----------------------------------------------------------
+   * Configurações
+   * -------------------------------------------------------- */
+
+  /** Desenha os cartões de tema (o resto do formulário é estático). */
+  function renderizarConfig() {
+    $('#config-temas').innerHTML = TEMAS.map(tema => `
+      <button class="config-tema" data-tema="${tema.id}" role="radio" aria-checked="false">
+        <span class="config-tema-amostra tema-${tema.id}" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </span>
+        <span class="config-tema-nome">${escaparHtml(tema.nome)}</span>
+      </button>`).join('');
+
+    marcarPreferenciasNaTela();
+    atualizarResumoLocal();
+  }
+
+  /** Sincroniza os controles da tela com as preferências vigentes. */
+  function marcarPreferenciasNaTela() {
+    const p = Estado.prefs;
+
+    $$('#config-temas .config-tema').forEach(botao => {
+      const ativo = botao.dataset.tema === p.tema;
+      botao.classList.toggle('ativo', ativo);
+      botao.setAttribute('aria-checked', String(ativo));
+    });
+
+    $$('#view-config [data-pref]').forEach(botao => {
+      const ativo = p[botao.dataset.pref] === botao.dataset.valor;
+      botao.classList.toggle('ativo', ativo);
+      botao.setAttribute('aria-pressed', String(ativo));
+    });
+  }
+
+  /** Resume o que está guardado neste navegador. */
+  function atualizarResumoLocal() {
+    const favoritos = Estado.registros.filter(r => Estado.favoritos.has(r.id)).length;
+    $('#config-resumo-local').textContent =
+      `${favoritos} favorito${favoritos === 1 ? '' : 's'} e ` +
+      `${Estado.historico.length} busca${Estado.historico.length === 1 ? '' : 's'} no histórico.`;
+  }
+
+  /** Carrega e desenha o conteúdo da lixeira (chamada sob demanda). */
+  async function carregarLixeira() {
+    const alvo = $('#config-lixeira-lista');
+    alvo.innerHTML = '<p class="config-ajuda">Carregando…</p>';
+
+    try {
+      const resposta = await servidor('listarLixeira', 30);
+      const itens = resposta.registros || [];
+
+      alvo.innerHTML = itens.length
+        ? itens.map(r => `
+            <div class="lixeira-item">
+              <div class="lixeira-info">
+                <span class="badge badge-${r.tipo}">${r.tipo === 'FAQ' ? 'FAQ' : 'Tabulação'}</span>
+                <span class="lixeira-nome">${escaparHtml(r.descricao)}</span>
+                <span class="config-ajuda">
+                  ${escaparHtml(r.id)} · excluído por ${escaparHtml(r.excluidoPor || '—')}
+                  em ${escaparHtml(r.dataExclusao || '—')}
+                </span>
+              </div>
+              <button class="btn btn-ghost" data-restaurar="${escaparHtml(r.id)}">Restaurar</button>
+            </div>`).join('')
+        : '<p class="config-ajuda">A lixeira está vazia.</p>';
+    } catch (erro) {
+      alvo.innerHTML = `<p class="config-ajuda">${escaparHtml(erro.message)}</p>`;
+    }
+  }
+
+  /** Devolve um registro da lixeira para a base ativa. */
+  async function restaurarDaLixeira(id, botao) {
+    botao.disabled = true;
+    botao.textContent = 'Restaurando…';
+
+    try {
+      const resposta = await servidor('restaurarRegistro', id);
+      Estado.registros.push(indexar(resposta.registro));
+      atualizarCategorias();
+      renderizar();
+      await carregarLixeira();
+      atualizarResumoLocal();
+      toast('Registro ' + id + ' restaurado.');
+    } catch (erro) {
+      botao.disabled = false;
+      botao.textContent = 'Restaurar';
+      toast(erro.message, 'erro');
+    }
+  }
+
+  /** Volta todas as preferências ao padrão de fábrica. */
+  function restaurarPadroes() {
+    Estado.prefs = Object.assign({}, PADROES);
+    salvarPreferencias();
+    aplicarPreferencias();
+    marcarPreferenciasNaTela();
+    renderizar();
+    toast('Preferências restauradas.');
   }
 
   /* ----------------------------------------------------------
@@ -2427,17 +3871,9 @@ mark {
 
     // Validação simples no cliente com destaque visual.
     limparInvalidos();
-    let invalido = null;
-    if (!dados.categoria) invalido = '#campo-categoria';
-    else if (!dados.descricao) invalido = '#campo-descricao';
-    else if (!dados.texto) invalido = '#campo-texto';
-
-    if (invalido) {
-      $(invalido).classList.add('invalido');
-      $(invalido).focus();
-      toast('Preencha todos os campos.', 'erro');
-      return;
-    }
+    if (!dados.categoria) return marcarInvalido('categoria', 'Informe a categoria.');
+    if (!dados.descricao) return marcarInvalido('descricao', 'Informe a descrição ou cenário.');
+    if (!dados.texto) return marcarInvalido('texto', 'Informe o texto.');
 
     Estado.salvando = true;
     const btn = $('#btn-salvar');
@@ -2482,7 +3918,122 @@ mark {
     $('#btn-nav-home').addEventListener('click', mostrarHome);
     $('#btn-novo').addEventListener('click', () => abrirCadastro(null));
     $('#btn-vazio-novo').addEventListener('click', () => abrirCadastro(null));
-    $('#btn-tema').addEventListener('click', alternarTema);
+    $('#btn-limpar').addEventListener('click', limparFiltros);
+    $('#btn-atualizar').addEventListener('click', () => revalidar(false));
+
+    // Carrega o próximo lote quando a sentinela entra na tela.
+    if ('IntersectionObserver' in window) {
+      const observador = new IntersectionObserver((entradas) => {
+        // A assinatura dos filtros não muda aqui, então renderizar()
+        // preserva o limite ampliado em vez de voltar ao primeiro lote.
+        if (entradas[0].isIntersecting && !$('#sentinela').hidden) {
+          Estado.limite += LOTE;
+          renderizar();
+        }
+      }, { rootMargin: '300px' });
+      observador.observe($('#sentinela'));
+    } else {
+      // Navegador antigo: sem observador, o botão faz o papel.
+      $('#sentinela').addEventListener('click', () => {
+        Estado.limite += LOTE;
+        renderizar();
+      });
+    }
+
+    // Ao voltar para a aba, verifica se alguém cadastrou algo nesse meio-tempo.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') return;
+      if (Estado.tela !== 'home' || !Estado.carregado) return;
+      if (Date.now() - Estado.carregadoEm < INTERVALO_REVALIDACAO) return;
+      revalidar(true);
+    });
+
+    // Dashboard
+    $('#btn-dashboard').addEventListener('click', () => {
+      renderizarDashboard();
+      irPara('dashboard');
+    });
+    $('#btn-dash-voltar').addEventListener('click', mostrarHome);
+
+    $('#btn-dash-pendencia').addEventListener('click', () => {
+      limparFiltrosSilencioso();
+      Estado.filtroSubcategoria = SEM_SUB;
+      mostrarHome();
+      renderizar();
+    });
+
+    // Barras e itens recentes levam de volta à lista já filtrada.
+    $('#view-dashboard').addEventListener('click', (e) => {
+      const alvo = e.target.closest('[data-acao]');
+      if (!alvo) return;
+      const acao = alvo.dataset.acao;
+
+      if (acao === 'filtrar-categoria') {
+        limparFiltrosSilencioso();
+        Estado.filtroCategoria = alvo.dataset.chave;
+        $('#filtro-categoria').value = alvo.dataset.chave;
+        atualizarSubcategorias();
+      } else if (acao === 'filtrar-subcategoria') {
+        limparFiltrosSilencioso();
+        const registro = Estado.registros.find(r => r.subcategoria === alvo.dataset.chave);
+        if (registro) {
+          Estado.filtroCategoria = registro.categoria;
+          $('#filtro-categoria').value = registro.categoria;
+          atualizarSubcategorias();
+          Estado.filtroSubcategoria = alvo.dataset.chave;
+          $('#filtro-subcategoria').value = alvo.dataset.chave;
+        }
+      } else if (acao === 'abrir') {
+        const registro = Estado.registros.find(r => r.id === alvo.dataset.id);
+        if (registro) {
+          limparFiltrosSilencioso();
+          Estado.busca = registro.descricao;
+          $('#campo-pesquisa').value = registro.descricao;
+        }
+      } else {
+        return;
+      }
+
+      mostrarHome();
+      renderizar();
+    });
+    $('#btn-vazio-limpar').addEventListener('click', limparFiltros);
+    $('#btn-config').addEventListener('click', () => {
+      renderizarConfig();
+      irPara('config');
+    });
+    $('#btn-config-voltar').addEventListener('click', mostrarHome);
+
+    // Um único ouvinte cobre temas e todos os segmentados de preferência.
+    $('#view-config').addEventListener('click', (e) => {
+      const tema = e.target.closest('[data-tema]');
+      if (tema) { aplicarTema(tema.dataset.tema); return; }
+
+      const pref = e.target.closest('[data-pref]');
+      if (pref) definirPreferencia(pref.dataset.pref, pref.dataset.valor);
+    });
+
+    $('#btn-lixeira-carregar').addEventListener('click', carregarLixeira);
+
+    $('#config-lixeira-lista').addEventListener('click', (e) => {
+      const botao = e.target.closest('[data-restaurar]');
+      if (botao) restaurarDaLixeira(botao.dataset.restaurar, botao);
+    });
+
+    $('#btn-config-limpar-historico').addEventListener('click', () => {
+      limparHistorico();
+      atualizarResumoLocal();
+    });
+
+    $('#btn-config-limpar-favoritos').addEventListener('click', () => {
+      Estado.favoritos.clear();
+      salvarFavoritos();
+      atualizarResumoLocal();
+      renderizar();
+      toast('Favoritos removidos.');
+    });
+
+    $('#btn-config-restaurar').addEventListener('click', restaurarPadroes);
     $('#btn-cancelar').addEventListener('click', mostrarHome);
     $('#btn-salvar').addEventListener('click', salvar);
 
@@ -2501,7 +4052,7 @@ mark {
 
     // Histórico: abre ao focar o campo vazio.
     campoPesquisa.addEventListener('focus', () => {
-      if (!campoPesquisa.value.trim()) abrirHistorico();
+      if (Estado.prefs.historico === 'sim' && !campoPesquisa.value.trim()) abrirHistorico();
     });
 
     campoPesquisa.addEventListener('keydown', (e) => {
@@ -2534,8 +4085,12 @@ mark {
     // Filtros rápidos por tipo.
     $$('.chip').forEach(chip => {
       chip.addEventListener('click', () => {
-        $$('.chip').forEach(c => c.classList.remove('ativo'));
+        $$('.chip').forEach(c => {
+          c.classList.remove('ativo');
+          c.setAttribute('aria-pressed', 'false');
+        });
         chip.classList.add('ativo');
+        chip.setAttribute('aria-pressed', 'true');
         Estado.filtroTipo = chip.dataset.filtro;
         renderizar();
       });
@@ -2617,6 +4172,9 @@ mark {
     $('#modal-confirmar').addEventListener('click', (e) => {
       if (e.target === $('#modal-confirmar')) fecharModal();
     });
+
+    // Foco preso dentro do modal enquanto ele estiver aberto.
+    document.addEventListener('keydown', prenderFoco);
 
     // Atalhos de teclado.
     document.addEventListener('keydown', (e) => {

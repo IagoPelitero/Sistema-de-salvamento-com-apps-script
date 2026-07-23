@@ -3,7 +3,9 @@
 **Versão auditada:** 8 arquivos · 1.776 linhas
 `Code.gs` (32) · `Database.gs` (270) · `Utils.gs` (97) · `Index.html` (55) · `Home.html` (62) · `Cadastro.html` (62) · `Style.html` (601) · `Script.html` (597)
 
-**Status:** relatório de análise + **Fases 0 a 4 executadas** (seções 8 a 12).
+**Status:** relatório de análise + **todas as 10 fases executadas** (seções 8 a 17). Plano concluído.
+
+**Requisitos incorporados:** R-01 hierarquia (seção 2.7) e R-02 hierarquia mais evidente (seção 2.8).
 
 **Requisito adicional incorporado:** hierarquia Categoria → Subcategoria (R-01, seção 2.7).
 
@@ -243,6 +245,30 @@ Registros sem subcategoria são exibidos como **"Geral"**. Nada quebra, nada pre
 
 ---
 
+### 2.8 📐 Requisito novo — Categoria e subcategoria mais evidentes
+
+#### R-02 · MÉDIO · Aumentar o peso visual da hierarquia no card
+
+**Necessidade:** a hierarquia existe e funciona (Fase 2), mas no card ela ainda aparece como texto pequeno e acinzentado no topo — o mesmo tratamento dado a metadados secundários. Para quem varre a lista durante um atendimento, o caminho `Cartão de crédito › Cancelamento` é informação de **localização**, não de rodapé.
+
+**Diagnóstico:** hoje o caminho usa `--t-xs` (12px), peso 600 e `--texto-sutil`. A descrição, logo abaixo, usa 15px e peso 650. A hierarquia perde a disputa visual justamente para o elemento que ela deveria contextualizar.
+
+**Propostas a avaliar na implementação:**
+
+| Opção | Efeito | Custo |
+|---|---|---|
+| **Pílula tingida na cor da categoria** (em vez do ponto + texto cinza) | A categoria vira um objeto reconhecível de relance; aproveita a cor já calculada na Fase 4 | Baixo |
+| **Subcategoria como segunda pílula**, em tom mais claro | Torna os dois níveis distinguíveis sem ler o texto | Baixo |
+| **Agrupamento por categoria na lista**, com cabeçalho fixo ao rolar | Transforma a lista em navegação hierárquica de verdade | Médio |
+| **Árvore lateral recolhível** (desktop) | Navegação completa sem depender da busca | Médio-alto |
+| Aumentar tipografia do caminho e escurecer a cor | Correção mínima, sem mudança estrutural | Muito baixo |
+
+**Recomendação preliminar:** combinar as duas primeiras (pílulas coloridas) com o agrupamento por categoria. A árvore lateral fica para depois — ela resolve o mesmo problema com muito mais superfície de código e complica o responsivo.
+
+**Riscos:** baixos e visuais. O agrupamento interfere na ordenação atual (favoritos primeiro, depois data), então precisa de decisão explícita: agrupar apenas quando não há busca ativa, mantendo a lista plana durante a pesquisa.
+
+---
+
 ## 3. Avaliação das melhorias sugeridas por você
 
 Nem tudo que foi listado no briefing vale o custo. Meu parecer honesto:
@@ -290,10 +316,11 @@ Uma fase por entrega, cada uma independente e reversível. Nenhuma exige migraç
 | **2 — Hierarquia (R-01)** | Coluna Subcategoria, formulário em cascata, filtros, breadcrumb nos cards | `Database.gs`, `Utils.gs`, `Cadastro.html`, `Home.html`, `Script.html`, `Style.html` | Médio | ✅ **Concluída** |
 | **3 — Motor de busca** | P-01 (índice pré-computado, já incluindo subcategoria), P-03 (render cirúrgico), AND implícito, histórico de busca | `Script.html`, `Home.html`, `Style.html` | Médio | ✅ **Concluída** |
 | **4 — Cards e categorias** | Cores por categoria, badges, densidade, favoritos mais visíveis | `Style.html`, `Script.html`, `Home.html` | Baixo | ✅ **Concluída** |
-| **5 — Acessibilidade** | AC-01 a AC-04, *focus trap*, navegação por teclado | `Home.html`, `Index.html`, `Script.html` | Baixo | Pendente |
-| **6 — Dashboard** | Indicadores a partir do cache, incluindo uso por categoria/subcategoria | novo `Dashboard.html` + `Script.html` | Baixo | Pendente |
-| **7 — Configurações** | Tela de preferências (tema, densidade, animações, busca) | novo `Config.html` + `Script.html` | Baixo | Pendente |
-| **8 — Escala** | Renderização incremental, B-03 (revalidação), A-03 (lixeira) | `Script.html`, `Database.gs` | Médio | Pendente |
+| **5 — Acessibilidade** | AC-01 a AC-04, contraste WCAG, *focus trap*, navegação por teclado | `Index.html`, `Home.html`, `Cadastro.html`, `Script.html`, `Style.html` | Baixo | ✅ **Concluída** |
+| **6 — Hierarquia evidente (R-02)** | Pílulas coloridas, agrupamento na lista e limpar filtros | `Script.html`, `Style.html`, `Home.html` | Baixo | ✅ **Concluída** |
+| **7 — Dashboard** | Indicadores a partir do cache, incluindo uso por categoria/subcategoria | novo `Dashboard.html`, `Index.html`, `Script.html`, `Style.html` | Baixo | ✅ **Concluída** |
+| **8 — Configurações** | Tela de preferências (tema, densidade, animações, busca) | novo `Config.html`, `Index.html`, `Script.html`, `Style.html` | Baixo | ✅ **Concluída** |
+| **9 — Escala** | Renderização incremental, B-03 (revalidação), A-03 (lixeira) | `Database.gs`, `Script.html`, `Home.html`, `Config.html`, `Style.html` | Médio | ✅ **Concluída** |
 
 **Fase 0 é pré-requisito de todas as outras.** A Fase 2 (hierarquia) vem logo após a fundação visual porque é o único requisito **funcional** da lista — as demais são refinamento. As fases 4–8 podem ser reordenadas conforme sua prioridade.
 
@@ -547,3 +574,264 @@ Os chips usavam `role="tablist"` / `role="tab"` sem `aria-selected` e sem nenhum
 - ✅ `node --check` no cliente
 - ✅ **19 verificações:** determinismo, insensibilidade a acento/caixa, todos os valores dentro da paleta, dispersão de 9/10, estabilidade entre chamadas, categoria vazia tratada, nomes parecidos com tons distantes, seis combinações de filtros, integridade do marcador e dos tokens de tema
 - ✅ Simulador reconstruído sem elementos ausentes
+
+
+---
+
+## 13. Fase 5 — Executada ✅
+
+**Arquivos alterados:** `Index.html`, `Home.html`, `Cadastro.html`, `Script.html`, `Style.html`.
+
+### Contraste — as falhas eram reais
+
+Auditei os pares de cor dos três temas com a fórmula de contraste da WCAG 2.1, antes de tocar em qualquer valor. **7 falhas**, com o texto sutil (metadados dos cards, 11px) sendo a mais séria:
+
+| Token | Tema | Antes | Depois |
+|---|---|---|---|
+| `--p-cinza-400` sobre superfície | portobank | ❌ 2,96:1 | ✅ 4,94:1 |
+| `--p-cinza-400` sobre fundo | portobank | ❌ 2,78:1 | ✅ 4,65:1 |
+| `--p-cinza-400` sobre superfície | rosa | ❌ 3,48:1 | ✅ 4,98:1 |
+| `--p-cinza-400` sobre fundo | rosa | ❌ 3,25:1 | ✅ 4,66:1 |
+| Borda de controle | os três | ❌ ~1,3:1 | ✅ ≥ 3,0:1 |
+
+As cores novas foram **calculadas**, não estimadas: um solver ajusta a luminosidade preservando matiz e saturação até atingir o mínimo exigido, mantendo a identidade de cada tema.
+
+Sobre as bordas: a WCAG 1.4.11 exige 3:1 para componentes de interface, mas **isenta elementos decorativos**. Por isso a distinção entre `--borda` (divisórias e contorno de card, sem exigência) e o novo `--borda-controle`, aplicado aos elementos com que se interage — campo de busca, selects de filtro, campos do formulário e botão de favoritos.
+
+### AC-01 · Semântica dos controles
+Chips e segmentado de tipo passaram a `role="group"` com `aria-pressed` sincronizado pelo JS. Antes o leitor de tela anunciava "aba" e procurava um painel inexistente.
+
+### AC-02 · Gestão de foco do modal
+Foco preso no diálogo (Tab e Shift+Tab circulam entre os botões), foco inicial no botão de ação e **devolução ao elemento que abriu** — com verificação de que ele ainda existe no DOM, já que o card pode ter sido excluído.
+
+### AC-03 · Nomes acessíveis
+Os botões de ícone tinham apenas `title`, que leitores de tela ignoram. Agora cada um tem `aria-label` **contextualizado com o registro** — "Excluir Cliente quer cancelar por causa da anuidade", não "Excluir". O emoji do botão Copiar recebeu `aria-hidden`, e o "Ver mais" ganhou `aria-expanded`.
+
+### AC-04 · Anúncios dinâmicos
+Contadores e resultados em `role="status"` + `aria-live="polite"`: a contagem passa a ser anunciada conforme a busca filtra. Skeleton identificado como "Carregando registros".
+
+### Validação de formulário acessível
+O toast de erro não dizia **qual** campo falhou. Agora cada campo tem mensagem própria com `role="alert"`, ligada por `aria-describedby`, com `aria-invalid` no campo e limpeza entre tentativas. O campo inválido ganhou borda de 2px além da cor vermelha — WCAG 1.4.1 proíbe usar cor como único indicador.
+
+### Navegação por teclado
+Link "Pular para o conteúdo" visível apenas ao receber foco, e `Esc` com ordem de precedência clara: fecha o histórico, depois o modal, depois o formulário.
+
+### Validação executada
+
+- ✅ `node --check` no cliente
+- ✅ **30 pares de contraste** reauditados nos 3 temas — nenhuma falha
+- ✅ **40 verificações** de acessibilidade e regressão
+
+
+---
+
+## 14. Fase 6 — Executada ✅
+
+**Arquivos alterados:** `Script.html`, `Home.html`, `Style.html`.
+
+### Pílulas de hierarquia
+
+O caminho deixou de ser texto cinza de 12px e virou dois objetos visuais: **categoria como pílula cheia** na cor derivada do nome (reaproveitando o hash da Fase 4) e **subcategoria como pílula de contorno**, na mesma família cromática. Dois níveis distinguíveis sem precisar ler.
+
+Os tokens foram **calculados**, não escolhidos a olho. Uma busca varreu combinações de saturação e luminosidade exigindo, simultaneamente, para os **18 matizes da paleta**:
+
+| Critério | Mínimo | Resultado |
+|---|---|---|
+| Texto da pílula sobre o próprio fundo | 4,5:1 (WCAG AA) | 6,74:1 (claro) · 4,56:1 (escuro) |
+| Fundo da pílula sobre o card | 1,18:1 (visível como forma) | 1,26:1 (claro) · 1,22:1 (escuro) |
+
+A primeira tentativa passava no texto (5,35:1) mas falhava na forma (**1,06:1**) — a pílula seria invisível sobre o card branco. Só a verificação dos dois critérios juntos expôs o problema.
+
+### Agrupamento com navegação de nível
+
+A lista passa a ser agrupada por categoria, com cabeçalho fixo ao rolar, marca colorida e contagem por grupo.
+
+Duas decisões de comportamento:
+
+1. **Com uma categoria filtrada, o agrupamento desce um nível** e passa a agrupar por subcategoria. Agrupar por algo que já é o filtro seria redundante — assim a hierarquia vira navegação de verdade.
+2. **Durante a busca a lista fica plana.** Quem pesquisa quer o resultado, não a gaveta em que ele mora; o agrupamento voltaria a esconder o que a busca acabou de encontrar.
+
+Grupos em ordem alfabética com `localeCompare('pt-BR')` — "Ávila" antes de "Cartão" —, e o grupo "Sem categoria"/"Sem subcategoria" sempre no fim.
+
+### Limpar filtros
+
+Botão em dois lugares: na barra de contadores (visível apenas quando há algo a limpar) e no estado vazio, que é justamente onde o usuário percebe que filtrou demais. Ambos zeram os **cinco eixos** — busca, tipo, categoria, subcategoria e favoritos — e ressincronizam campo de busca, `aria-pressed` dos chips, ícone do botão de favoritos e o select de subcategoria.
+
+### Validação executada
+
+- ✅ `node --check` no cliente
+- ✅ **35 verificações:** agrupamento por categoria e por subcategoria, ordem alfabética com acento, grupo sem classificação no fim, nenhum registro perdido no agrupamento, sete cenários de estado de filtro, sincronização completa do limpar, integridade das pílulas e regressão de CSS
+- ✅ Contraste das pílulas verificado nos 18 matizes × 2 esquemas
+- ✅ Simulador reconstruído sem elementos ausentes
+
+
+---
+
+## 15. Fase 7 — Executada ✅
+
+**Arquivos:** novo `Dashboard.html`; alterados `Index.html`, `Script.html`, `Style.html`.
+
+### Custo zero de servidor
+
+Todos os indicadores saem do **cache já carregado**. Abrir a tela não dispara nenhuma chamada ao Apps Script — o que importa numa plataforma com cota de execução.
+
+### O que mostra
+
+| Bloco | Conteúdo |
+|---|---|
+| Números principais | FAQs, Tabulações, categorias, subcategorias e favoritos |
+| Registros por categoria | Ranking com barra proporcional e divisão FAQ/Tabulação |
+| Subcategorias mais usadas | Mesmo formato, um nível abaixo |
+| Quem mais cadastra | Ranking por autor |
+| Últimas alterações | Os 5 registros mexidos mais recentemente |
+| Pendente de classificação | Quantos registros ainda não têm subcategoria, com percentual |
+
+### Indicadores que levam a algum lugar
+
+Cada barra é clicável e **devolve o usuário à lista já filtrada**. Clicar em "Cancelamento" nas subcategorias descobre a categoria pai, aplica os dois níveis de filtro e volta para a home — o dashboard vira ponto de partida, não um painel decorativo.
+
+O bloco "Pendente de classificação" leva direto ao filtro **Sem subcategoria**, transformando o número numa fila de trabalho. Ele só aparece quando há algo pendente.
+
+### Gráficos sem biblioteca
+
+Barras são `div`s com largura percentual, respeitando a restrição de não usar bibliotecas externas. Cada linha é um **botão com `aria-label` completo** ("Cartão de crédito: 3 registros (2 FAQ, 1 tabulação)") e o trilho visual leva `aria-hidden` — o leitor de tela recebe o dado, não a forma.
+
+### C-02 corrigido de quebra
+
+A terceira tela tornou insustentável manipular `hidden` em quatro pontos do código. Criei o roteador `irPara(tela)` com o mapa `TELAS`, eliminando o risco de duas telas visíveis ao mesmo tempo. O `limparFiltros` também foi refatorado: a versão silenciosa é reaproveitada pelos drill-downs, sem duplicar a lógica de sincronização.
+
+### Bug encontrado no teste
+
+O contador de favoritos usava o tamanho do `Set`, que pode conter IDs de registros já excluídos (o `localStorage` sobrevive à exclusão). Passou a contar apenas favoritos que existem na base.
+
+### Validação executada
+
+- ✅ `node --check` no cliente
+- ✅ **38 verificações:** totais consistentes, favoritos órfãos ignorados, ordenação por volume com desempate alfabético, subcategorias vazias excluídas dos rankings, última alteração correta, recentes limitados e ordenados, **base vazia sem quebrar**, contêineres presentes, acessibilidade das barras e drill-downs
+- ✅ Simulador reconstruído sem elementos ausentes
+
+
+---
+
+## 16. Fase 8 — Executada ✅
+
+**Arquivos:** novo `Config.html`; alterados `Index.html`, `Script.html`, `Style.html`.
+
+### Preferências disponíveis
+
+| Preferência | Opções | Padrão |
+|---|---|---|
+| Tema | PortoBank · Rosa · Dark | PortoBank |
+| Densidade | Confortável · Compacta | Confortável |
+| Linhas visíveis no card | 3 · 4 · 8 | 4 |
+| Animações | Ligadas · Reduzidas | Ligadas |
+| Agrupar por categoria | Sim · Não | Sim |
+| Sugerir buscas recentes | Sim · Não | Sim |
+
+Somam-se a isso o resumo do que está guardado no navegador, a lista de atalhos e três ações locais: limpar histórico, limpar favoritos e restaurar padrões.
+
+### Densidade sem reescrever componentes
+
+`html[data-densidade="compacta"]` **redefine a escala de espaçamento** (`--e-3` a `--e-12`). Como todo o CSS já consumia esses tokens desde a Fase 1, a interface inteira encolhe de forma proporcional sem nenhuma regra específica por componente. É o retorno prático do investimento em design tokens.
+
+O mesmo vale para as linhas do card: `-webkit-line-clamp: var(--linhas-card, 4)`.
+
+### O ciclador de tema saiu da topbar
+
+O botão 🎨 alternava entre os três temas em sequência — divertido, mas o tema é escolhido uma vez e nunca mais. Ele deu lugar a **⚙️ Configurações**, com seleção explícita e amostra visual de cada esquema. A topbar não cresceu e a escolha ficou mais clara.
+
+### Migração silenciosa
+
+Versões anteriores guardavam o tema em `bc_tema`. A nova estrutura usa `bc_prefs`, mas a chave antiga continua sendo lida quando não há preferência nova — quem já usava o sistema não perde o tema escolhido. Testado nos dois sentidos, incluindo precedência.
+
+### Validação executada
+
+- ✅ `node --check` no cliente
+- ✅ **34 verificações**, com destaque para os casos de robustez:
+  - `bc_prefs` com **JSON corrompido** → cai nos padrões sem quebrar
+  - Tema **inválido** salvo → volta ao padrão
+  - Chave **desconhecida** no JSON → ignorada (não polui o estado)
+  - **`localStorage` bloqueado** (modo restrito/privado) → sistema continua funcionando
+  - Migração de `bc_tema` e precedência de `bc_prefs`
+- ✅ Nenhuma referência órfã ao botão removido
+- ✅ Simulador reconstruído sem elementos ausentes
+
+### Segurança do simulador
+
+Os e-mails fictícios passaram de `@portobank.com` para **`@teste.test`**. O TLD `.test` é reservado pela RFC 2606 e **nunca pode ser registrado**, então nenhuma mensagem enviada a esses endereços chega a lugar algum — nem ao domínio corporativo real.
+
+
+---
+
+## 17. Fase 9 — Executada ✅
+
+**Arquivos alterados:** `Database.gs`, `Script.html`, `Home.html`, `Config.html`, `Style.html`.
+
+### A-03 · Lixeira em vez de exclusão definitiva
+
+Excluir passou a **mover a linha para uma aba nova `LIXEIRA`**, com três colunas de rastro: origem (FAQ/TAB), quem excluiu e quando. As abas `FAQ` e `TABULAÇÕES` não mudam de estrutura, nenhuma coluna é renomeada e instalações antigas não precisam de migração — a aba é criada sob demanda, na primeira exclusão.
+
+Duas funções novas no servidor: `listarLixeira(limite)` e `restaurarRegistro(id)`. A restauração **preserva o ID e as datas originais** e é recusada quando já existe um registro ativo com aquele ID, em vez de gerar duplicidade silenciosa.
+
+Na interface, um bloco **Lixeira** em Configurações, carregado sob demanda (a tela principal continua fazendo uma única leitura).
+
+### B-03 · Revalidação do cache
+
+Os dados eram lidos uma vez por sessão, então dois atendentes não viam os cadastros um do outro até recarregar — origem de cadastro duplicado e uso de texto desatualizado.
+
+| Gatilho | Comportamento |
+|---|---|
+| Botão **↻ Atualizar** | Releitura imediata, com ícone girando |
+| Volta para a aba | Revalidação automática, só na home e só após 5 minutos da última leitura |
+
+A revalidação **compara o antes e o depois** e avisa o que mudou ("Base atualizada: 3 novos e 1 removido"). A automática é silenciosa quando nada mudou e quando falha — não faz sentido interromper um atendimento com erro de uma checagem que o usuário nem pediu.
+
+### P-04 · Renderização incremental
+
+Primeiro lote de **60 cards**; os seguintes entram conforme a rolagem, via `IntersectionObserver` com margem de 300px (o lote carrega antes de o usuário chegar ao fim). Navegadores sem suporte caem em um fallback por clique.
+
+O controle é uma **assinatura dos filtros**: quando busca ou filtro mudam, a lista volta ao primeiro lote; quando o usuário apenas rola, o limite cresce sem reiniciar. Sem isso, filtrar depois de rolar muito manteria centenas de cards no DOM sem necessidade.
+
+Mantida a decisão da auditoria de **não usar virtualização**: ela quebraria Ctrl+F e a impressão, com muito mais código.
+
+### Validação executada
+
+- ✅ `node --check` no servidor e no cliente
+- ✅ **38 verificações**, com destaque para o ciclo completo da lixeira:
+  - Exclusão preserva texto, subcategoria, origem, autor e data
+  - `getAllRecords` **não enxerga** a lixeira
+  - Restauração devolve à aba certa (testado em FAQ e Tabulação), com ID e datas originais
+  - Restauração sobre ID em uso é **recusada** e o registro permanece na lixeira
+  - Lixeira vazia e IDs inválidos tratados
+  - Renderização: primeiro lote, ampliação por rolagem, reset ao mudar a busca, resultado menor que o lote
+  - Revalidação: reentrância bloqueada, comparação antes/depois, restrições de tela e intervalo
+- ✅ Simulador atualizado com lixeira funcional
+
+---
+
+## 18. Situação final
+
+As 10 fases do plano foram executadas. Dos 19 achados da auditoria inicial, **todos os de severidade crítica, alta e média foram corrigidos**, além dos dois requisitos incorporados no caminho (R-01 e R-02).
+
+| Achado | Situação |
+|---|---|
+| A-01 · Perda de acesso à base | ✅ Fase 0 |
+| A-02 · Cabeçalho sobrescrito | ✅ Fase 0 |
+| A-03 · Exclusão sem rastro | ✅ Fase 9 |
+| B-01 · Filtro fantasma | ✅ Fase 0 |
+| B-02 · Sem timeout | ✅ Fase 0 |
+| B-03 · Cache sem revalidação | ✅ Fase 9 |
+| B-06 · Cópia sem retorno | ✅ Fase 2 |
+| P-01 · Custo da busca | ✅ Fase 3 (~460×) |
+| P-03 · Re-render total | ✅ Fase 3 |
+| P-04 · Lista sem limite | ✅ Fase 9 |
+| AC-01 a AC-04 · Acessibilidade | ✅ Fases 4 e 5 |
+| Contraste WCAG | ✅ Fase 5 |
+| C-02 · Navegação espalhada | ✅ Fase 7 |
+| C-03/C-04 · Tokens e espaçamento | ✅ Fase 1 |
+| R-01 · Hierarquia | ✅ Fase 2 |
+| R-02 · Hierarquia evidente | ✅ Fase 6 |
+
+**Pendências conhecidas** (baixa severidade, registradas para acompanhamento): B-04 (conteúdo residual em `#print-area`), B-05 (fila de toasts sem limite), C-01 (separação UI/lógica no `Script.html`), C-05 (cor institucional duplicada) e C-06 (`localizarLinha_` linear).
+
+**P-02 (payload único)** segue sem ação por decisão consciente: só passa a valer a pena acima de alguns milhares de registros, e a renderização incremental já resolve o lado do navegador.

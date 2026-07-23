@@ -1,0 +1,60 @@
+<!-- ============================================================
+     DASHBOARD — Indicadores
+     Todo o conteúdo é calculado a partir do cache local já
+     carregado. Nenhuma chamada extra ao servidor.
+     ============================================================ -->
+<section id="view-dashboard" hidden>
+
+  <header class="painel-cabecalho">
+    <div>
+      <h2>Indicadores</h2>
+      <p class="form-subtitulo" id="dash-atualizado">Calculado a partir dos dados já carregados.</p>
+    </div>
+    <button class="btn btn-ghost" id="btn-dash-voltar">← Voltar à base</button>
+  </header>
+
+  <!-- Números principais -->
+  <div class="dash-numeros" id="dash-numeros"></div>
+
+  <div class="dash-colunas">
+
+    <!-- Distribuição por categoria -->
+    <section class="dash-bloco">
+      <h3 class="dash-titulo">
+        Registros por categoria
+        <span class="dash-dica">clique para filtrar</span>
+      </h3>
+      <div class="dash-barras" id="dash-categorias"></div>
+    </section>
+
+    <!-- Subcategorias mais usadas -->
+    <section class="dash-bloco">
+      <h3 class="dash-titulo">
+        Subcategorias mais usadas
+        <span class="dash-dica">clique para filtrar</span>
+      </h3>
+      <div class="dash-barras" id="dash-subcategorias"></div>
+    </section>
+
+    <!-- Quem mais cadastra -->
+    <section class="dash-bloco">
+      <h3 class="dash-titulo">Quem mais cadastra</h3>
+      <div class="dash-barras" id="dash-autores"></div>
+    </section>
+
+    <!-- Últimas alterações -->
+    <section class="dash-bloco">
+      <h3 class="dash-titulo">Últimas alterações</h3>
+      <ul class="dash-recentes" id="dash-recentes"></ul>
+    </section>
+
+  </div>
+
+  <!-- Pendência de classificação: acionável -->
+  <section class="dash-bloco dash-pendencia" id="dash-pendencia" hidden>
+    <h3 class="dash-titulo">Pendente de classificação</h3>
+    <p id="dash-pendencia-texto"></p>
+    <button class="btn btn-ghost" id="btn-dash-pendencia">Ver registros sem subcategoria</button>
+  </section>
+
+</section>

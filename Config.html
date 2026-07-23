@@ -1,0 +1,131 @@
+<!-- ============================================================
+     CONFIGURAÇÕES — Preferências do usuário
+     Tudo é salvo no navegador (localStorage). Nada vai para a
+     planilha, então cada pessoa ajusta o sistema ao seu jeito
+     sem afetar os colegas.
+     ============================================================ -->
+<section id="view-config" hidden>
+
+  <header class="painel-cabecalho">
+    <div>
+      <h2>Configurações</h2>
+      <p class="form-subtitulo">Preferências salvas neste navegador. Não afetam os outros usuários.</p>
+    </div>
+    <button class="btn btn-ghost" id="btn-config-voltar">← Voltar à base</button>
+  </header>
+
+  <div class="config-blocos">
+
+    <!-- Tema -->
+    <section class="config-bloco">
+      <h3 class="config-titulo">Tema</h3>
+      <div class="config-temas" id="config-temas" role="radiogroup" aria-label="Tema do sistema"></div>
+    </section>
+
+    <!-- Aparência -->
+    <section class="config-bloco">
+      <h3 class="config-titulo">Aparência</h3>
+
+      <div class="config-opcao">
+        <div class="config-rotulo">
+          <span>Densidade</span>
+          <span class="config-ajuda">Compacta mostra mais registros por tela.</span>
+        </div>
+        <div class="segmentado" role="group" aria-label="Densidade">
+          <button type="button" class="seg-opcao" data-pref="densidade" data-valor="confortavel">Confortável</button>
+          <button type="button" class="seg-opcao" data-pref="densidade" data-valor="compacta">Compacta</button>
+        </div>
+      </div>
+
+      <div class="config-opcao">
+        <div class="config-rotulo">
+          <span>Linhas visíveis no card</span>
+          <span class="config-ajuda">Antes do botão “Ver mais” aparecer.</span>
+        </div>
+        <div class="segmentado" role="group" aria-label="Linhas visíveis no card">
+          <button type="button" class="seg-opcao" data-pref="linhas" data-valor="3">3</button>
+          <button type="button" class="seg-opcao" data-pref="linhas" data-valor="4">4</button>
+          <button type="button" class="seg-opcao" data-pref="linhas" data-valor="8">8</button>
+        </div>
+      </div>
+
+      <div class="config-opcao">
+        <div class="config-rotulo">
+          <span>Animações</span>
+          <span class="config-ajuda">Desligue se preferir a interface sem transições.</span>
+        </div>
+        <div class="segmentado" role="group" aria-label="Animações">
+          <button type="button" class="seg-opcao" data-pref="animacoes" data-valor="ligadas">Ligadas</button>
+          <button type="button" class="seg-opcao" data-pref="animacoes" data-valor="reduzidas">Reduzidas</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Comportamento da lista e da busca -->
+    <section class="config-bloco">
+      <h3 class="config-titulo">Lista e busca</h3>
+
+      <div class="config-opcao">
+        <div class="config-rotulo">
+          <span>Agrupar por categoria</span>
+          <span class="config-ajuda">Durante a busca a lista fica sempre plana.</span>
+        </div>
+        <div class="segmentado" role="group" aria-label="Agrupar por categoria">
+          <button type="button" class="seg-opcao" data-pref="agrupar" data-valor="sim">Sim</button>
+          <button type="button" class="seg-opcao" data-pref="agrupar" data-valor="nao">Não</button>
+        </div>
+      </div>
+
+      <div class="config-opcao">
+        <div class="config-rotulo">
+          <span>Sugerir buscas recentes</span>
+          <span class="config-ajuda">Abre o histórico ao clicar no campo vazio.</span>
+        </div>
+        <div class="segmentado" role="group" aria-label="Sugerir buscas recentes">
+          <button type="button" class="seg-opcao" data-pref="historico" data-valor="sim">Sim</button>
+          <button type="button" class="seg-opcao" data-pref="historico" data-valor="nao">Não</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Atalhos -->
+    <section class="config-bloco">
+      <h3 class="config-titulo">Atalhos de teclado</h3>
+      <ul class="config-atalhos">
+        <li><kbd>Ctrl</kbd> <kbd>K</kbd> <span>Ir para a busca</span></li>
+        <li><kbd>Ctrl</kbd> <kbd>N</kbd> <span>Novo cadastro</span></li>
+        <li><kbd>Esc</kbd> <span>Fechar histórico, diálogo ou formulário</span></li>
+        <li><kbd>Tab</kbd> <span>Navegar entre os controles</span></li>
+      </ul>
+    </section>
+
+    <!-- Lixeira -->
+    <section class="config-bloco config-lixeira">
+      <h3 class="config-titulo">
+        Lixeira
+        <button class="btn-limpar" id="btn-lixeira-carregar">Carregar</button>
+      </h3>
+      <p class="config-ajuda">
+        Registros excluídos vão para a aba <strong>LIXEIRA</strong> da planilha,
+        com autor e data. Nada é apagado em definitivo pelo sistema.
+      </p>
+      <div id="config-lixeira-lista"></div>
+    </section>
+
+    <!-- Dados locais -->
+    <section class="config-bloco">
+      <h3 class="config-titulo">Dados deste navegador</h3>
+      <p class="config-ajuda" id="config-resumo-local"></p>
+      <div class="config-acoes">
+        <button class="btn btn-ghost" id="btn-config-limpar-historico">Limpar histórico de buscas</button>
+        <button class="btn btn-ghost" id="btn-config-limpar-favoritos">Limpar favoritos</button>
+        <button class="btn btn-ghost" id="btn-config-restaurar">Restaurar padrões</button>
+      </div>
+      <p class="config-ajuda config-aviso">
+        Nada aqui altera a planilha: FAQs e tabulações permanecem intactas.
+      </p>
+    </section>
+
+  </div>
+
+</section>
