@@ -16,7 +16,8 @@ Rápido, responsivo e sem dependências externas — funciona no desktop e no ce
 - 📋 **Copiar com um clique** — texto enviado direto para a área de transferência
 - ➕ **Cadastro e edição** de FAQs e Tabulações em formulário simples
 - 🗑️ **Exclusão** com modal de confirmação
-- ⭐ **Favoritos** — salvos no navegador e exibidos sempre no topo da lista
+- ⭐ **Favoritos** — salvos no navegador, exibidos no topo da lista e com filtro próprio
+- 🎨 **Cor automática por categoria** — tom estável derivado do nome, sem cadastro nem coluna extra
 - 🏷️ **Filtros rápidos** — Todos / FAQs / Tabulações + filtros em cascata por categoria e subcategoria
 - 📊 **Contadores** de FAQs e Tabulações no topo da tela
 - 📖 **Ver mais / Ver menos** para textos longos

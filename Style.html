@@ -182,6 +182,15 @@ html[data-theme] {
   --perigo: var(--p-perigo);
   --perigo-suave: var(--p-perigo-suave);
   --marca-fundo: var(--p-marca);
+
+  /* Cores de categoria: o matiz vem do JS, o acabamento vem do tema. */
+  --cat-sat: 60%;
+  --cat-luz: 45%;
+}
+
+html[data-theme="dark"] {
+  --cat-sat: 58%;
+  --cat-luz: 64%;
 }
 
 /* ------------------------------------------------------------
@@ -456,6 +465,10 @@ mark {
   border-radius: var(--r-md);
 }
 
+/* Chips e favoritos formam o bloco da esquerda; a hierarquia vai à direita. */
+.linha-filtros > .chips,
+.linha-filtros > .btn-favoritos { flex-shrink: 0; }
+
 .chip {
   height: 30px;
   padding: 0 var(--e-4);
@@ -508,6 +521,63 @@ mark {
 .contador-tab strong { color: var(--tab-cor); }
 .separador { opacity: .45; }
 
+
+/* ------------------------------------------------------------
+   CORES DE CATEGORIA E FAVORITOS (Fase 4)
+   O matiz chega como --matiz (inline, calculado por hash do nome
+   da categoria). Saturação e luminosidade são do tema, então a
+   mesma categoria fica legível nos três temas.
+   ---------------------------------------------------------- */
+.ponto-categoria {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: hsl(var(--matiz, 210), var(--cat-sat), var(--cat-luz));
+}
+
+/* Sem categoria definida o ponto não deve aparecer sozinho. */
+.card:not([style*="--matiz"]) .ponto-categoria { display: none; }
+
+/* Cartão favoritado: destaque discreto, sem competir com o tipo. */
+.card.favorito {
+  border-color: hsl(var(--matiz, 210), var(--cat-sat), var(--cat-luz));
+  border-left-width: 3px;
+}
+
+.card.favorito .btn-favorito { opacity: 1; }
+
+/* Botão de filtro por favoritos (eixo independente do tipo). */
+.btn-favoritos {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e-2);
+  height: 38px;
+  padding: 0 var(--e-3);
+  border: 1px solid var(--borda);
+  border-radius: var(--r-md);
+  background: var(--superficie);
+  color: var(--texto-suave);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  transition: border-color var(--dur-rapida) var(--ease),
+              color var(--dur-rapida) var(--ease),
+              background var(--dur-rapida) var(--ease);
+}
+
+.btn-favoritos:hover { border-color: var(--borda-forte); color: var(--texto); }
+
+.btn-favoritos.ativo {
+  border-color: var(--primaria);
+  background: var(--primaria-suave);
+  color: var(--primaria);
+}
+
+.btn-favoritos-icone { font-size: var(--t-base); line-height: 1; }
+
+.contador-fav strong { color: var(--texto-suave); }
+
 /* ------------------------------------------------------------
    CARDS
    Superfícies quase planas com borda de 1px: com dezenas de
@@ -556,6 +626,7 @@ mark {
   align-items: center;
   gap: var(--e-2);
   min-height: 20px;
+  margin-bottom: calc(var(--e-1) * -1);
 }
 
 .badge {
@@ -1128,8 +1199,9 @@ mark {
   .campo-busca input { font-size: var(--t-base); }
 
   .linha-filtros { gap: var(--e-2); }
-  .chips { width: 100%; }
+  .chips { flex: 1; }
   .chip { flex: 1; padding: 0 var(--e-2); }
+  .btn-favoritos { height: 38px; padding: 0 var(--e-3); }
   #filtro-categoria, #filtro-subcategoria { flex: 1; width: auto; max-width: none; min-width: 0; }
   .filtros-hierarquia { width: 100%; }
   .grupo-hierarquia { grid-template-columns: 1fr; gap: var(--e-4); }

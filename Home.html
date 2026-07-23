@@ -23,11 +23,18 @@
 
     <div class="linha-filtros">
       <!-- Filtros rápidos por tipo -->
-      <div class="chips" role="tablist" aria-label="Filtrar por tipo">
-        <button class="chip ativo" data-filtro="TODOS" role="tab">Todos</button>
-        <button class="chip chip-faq" data-filtro="FAQ" role="tab">FAQs</button>
-        <button class="chip chip-tab" data-filtro="TAB" role="tab">Tabulações</button>
+      <div class="chips" role="group" aria-label="Filtrar por tipo">
+        <button class="chip ativo" data-filtro="TODOS">Todos</button>
+        <button class="chip chip-faq" data-filtro="FAQ">FAQs</button>
+        <button class="chip chip-tab" data-filtro="TAB">Tabulações</button>
       </div>
+
+      <!-- Eixo independente do tipo: combina com qualquer outro filtro -->
+      <button class="btn-favoritos" id="btn-favoritos" aria-pressed="false"
+              title="Mostrar apenas os favoritos">
+        <span class="btn-favoritos-icone">☆</span>
+        <span class="so-desktop">Favoritos</span>
+      </button>
 
       <!-- Filtros hierárquicos: subcategoria depende da categoria -->
       <div class="filtros-hierarquia">
@@ -46,6 +53,8 @@
       <span class="contador contador-faq"><strong id="qtd-faq">0</strong> FAQs</span>
       <span class="separador">·</span>
       <span class="contador contador-tab"><strong id="qtd-tab">0</strong> Tabulações</span>
+      <span class="separador">·</span>
+      <span class="contador contador-fav"><strong id="qtd-fav">0</strong> favoritos</span>
       <span class="separador" id="sep-resultados" hidden>·</span>
       <span class="contador" id="qtd-resultados" hidden></span>
     </div>

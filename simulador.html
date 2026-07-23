@@ -188,6 +188,15 @@ html[data-theme] {
   --perigo: var(--p-perigo);
   --perigo-suave: var(--p-perigo-suave);
   --marca-fundo: var(--p-marca);
+
+  /* Cores de categoria: o matiz vem do JS, o acabamento vem do tema. */
+  --cat-sat: 60%;
+  --cat-luz: 45%;
+}
+
+html[data-theme="dark"] {
+  --cat-sat: 58%;
+  --cat-luz: 64%;
 }
 
 /* ------------------------------------------------------------
@@ -462,6 +471,10 @@ mark {
   border-radius: var(--r-md);
 }
 
+/* Chips e favoritos formam o bloco da esquerda; a hierarquia vai à direita. */
+.linha-filtros > .chips,
+.linha-filtros > .btn-favoritos { flex-shrink: 0; }
+
 .chip {
   height: 30px;
   padding: 0 var(--e-4);
@@ -514,6 +527,63 @@ mark {
 .contador-tab strong { color: var(--tab-cor); }
 .separador { opacity: .45; }
 
+
+/* ------------------------------------------------------------
+   CORES DE CATEGORIA E FAVORITOS (Fase 4)
+   O matiz chega como --matiz (inline, calculado por hash do nome
+   da categoria). Saturação e luminosidade são do tema, então a
+   mesma categoria fica legível nos três temas.
+   ---------------------------------------------------------- */
+.ponto-categoria {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: hsl(var(--matiz, 210), var(--cat-sat), var(--cat-luz));
+}
+
+/* Sem categoria definida o ponto não deve aparecer sozinho. */
+.card:not([style*="--matiz"]) .ponto-categoria { display: none; }
+
+/* Cartão favoritado: destaque discreto, sem competir com o tipo. */
+.card.favorito {
+  border-color: hsl(var(--matiz, 210), var(--cat-sat), var(--cat-luz));
+  border-left-width: 3px;
+}
+
+.card.favorito .btn-favorito { opacity: 1; }
+
+/* Botão de filtro por favoritos (eixo independente do tipo). */
+.btn-favoritos {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e-2);
+  height: 38px;
+  padding: 0 var(--e-3);
+  border: 1px solid var(--borda);
+  border-radius: var(--r-md);
+  background: var(--superficie);
+  color: var(--texto-suave);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  transition: border-color var(--dur-rapida) var(--ease),
+              color var(--dur-rapida) var(--ease),
+              background var(--dur-rapida) var(--ease);
+}
+
+.btn-favoritos:hover { border-color: var(--borda-forte); color: var(--texto); }
+
+.btn-favoritos.ativo {
+  border-color: var(--primaria);
+  background: var(--primaria-suave);
+  color: var(--primaria);
+}
+
+.btn-favoritos-icone { font-size: var(--t-base); line-height: 1; }
+
+.contador-fav strong { color: var(--texto-suave); }
+
 /* ------------------------------------------------------------
    CARDS
    Superfícies quase planas com borda de 1px: com dezenas de
@@ -562,6 +632,7 @@ mark {
   align-items: center;
   gap: var(--e-2);
   min-height: 20px;
+  margin-bottom: calc(var(--e-1) * -1);
 }
 
 .badge {
@@ -1134,8 +1205,9 @@ mark {
   .campo-busca input { font-size: var(--t-base); }
 
   .linha-filtros { gap: var(--e-2); }
-  .chips { width: 100%; }
+  .chips { flex: 1; }
   .chip { flex: 1; padding: 0 var(--e-2); }
+  .btn-favoritos { height: 38px; padding: 0 var(--e-3); }
   #filtro-categoria, #filtro-subcategoria { flex: 1; width: auto; max-width: none; min-width: 0; }
   .filtros-hierarquia { width: 100%; }
   .grupo-hierarquia { grid-template-columns: 1fr; gap: var(--e-4); }
@@ -1358,11 +1430,18 @@ mark {
 
     <div class="linha-filtros">
       <!-- Filtros rápidos por tipo -->
-      <div class="chips" role="tablist" aria-label="Filtrar por tipo">
-        <button class="chip ativo" data-filtro="TODOS" role="tab">Todos</button>
-        <button class="chip chip-faq" data-filtro="FAQ" role="tab">FAQs</button>
-        <button class="chip chip-tab" data-filtro="TAB" role="tab">Tabulações</button>
+      <div class="chips" role="group" aria-label="Filtrar por tipo">
+        <button class="chip ativo" data-filtro="TODOS">Todos</button>
+        <button class="chip chip-faq" data-filtro="FAQ">FAQs</button>
+        <button class="chip chip-tab" data-filtro="TAB">Tabulações</button>
       </div>
+
+      <!-- Eixo independente do tipo: combina com qualquer outro filtro -->
+      <button class="btn-favoritos" id="btn-favoritos" aria-pressed="false"
+              title="Mostrar apenas os favoritos">
+        <span class="btn-favoritos-icone">☆</span>
+        <span class="so-desktop">Favoritos</span>
+      </button>
 
       <!-- Filtros hierárquicos: subcategoria depende da categoria -->
       <div class="filtros-hierarquia">
@@ -1381,6 +1460,8 @@ mark {
       <span class="contador contador-faq"><strong id="qtd-faq">0</strong> FAQs</span>
       <span class="separador">·</span>
       <span class="contador contador-tab"><strong id="qtd-tab">0</strong> Tabulações</span>
+      <span class="separador">·</span>
+      <span class="contador contador-fav"><strong id="qtd-fav">0</strong> favoritos</span>
       <span class="separador" id="sep-resultados" hidden>·</span>
       <span class="contador" id="qtd-resultados" hidden></span>
     </div>
@@ -1542,6 +1623,7 @@ mark {
     registros: [],            // cache local — carregado uma única vez
     carregado: false,
     filtroTipo: 'TODOS',      // TODOS | FAQ | TAB
+    somenteFavoritos: false,  // eixo independente do tipo
     filtroCategoria: '',
     filtroSubcategoria: '',
     busca: '',
@@ -1871,6 +1953,52 @@ mark {
     return mapa;
   }
 
+  /**
+   * Matizes usados para colorir categorias — 18 tons espaçados em 20°.
+   * A saturação e a luminosidade ficam a cargo do tema
+   * (ver --cat-sat / --cat-luz no Style.html).
+   *
+   * Por que 18 e não 10: com um hash, o número de tons distintos segue
+   * o paradoxo do aniversário. Com 10 tons, 10 categorias produzem ~6,5
+   * cores distintas; com 18, sobem para ~8. Colisão ainda é possível,
+   * mas a cor é um apoio visual — o rótulo continua sendo a informação.
+   */
+  const MATIZES = [
+    0, 20, 40, 60, 80, 100, 120, 140, 160,
+    180, 200, 220, 240, 260, 280, 300, 320, 340
+  ];
+
+  /**
+   * Deriva uma cor estável a partir do nome da categoria.
+   *
+   * Determinístico e sem cadastro: a mesma categoria recebe sempre o
+   * mesmo tom, em qualquer navegador, sem coluna nova na planilha nem
+   * tela de configuração. Usa djb2 sobre o nome normalizado, então
+   * "Cartão" e "cartao" caem na mesma cor.
+   *
+   * @param {string} categoria
+   * @returns {number} Matiz HSL (0–360).
+   */
+  function matizCategoria(categoria) {
+    const chave = normalizar(categoria);
+
+    // djb2 para acumular os caracteres...
+    let hash = 5381;
+    for (let i = 0; i < chave.length; i++) {
+      hash = ((hash << 5) + hash + chave.charCodeAt(i)) >>> 0;
+    }
+
+    // ...seguido de avalanche, para que nomes parecidos ("Cartão de
+    // crédito" e "Cartão de débito") não caiam em tons vizinhos.
+    // Cada etapa termina com >>> 0: operadores bitwise devolvem int32
+    // COM SINAL, e um hash negativo produziria índice negativo na paleta.
+    hash = (hash ^ (hash >>> 16)) >>> 0;
+    hash = Math.imul(hash, 0x45d9f3b) >>> 0;
+    hash = (hash ^ (hash >>> 16)) >>> 0;
+
+    return MATIZES[hash % MATIZES.length];
+  }
+
   /** Ordenação alfabética respeitando acentuação do português. */
   function ordemPtBr(a, b) {
     return a.localeCompare(b, 'pt-BR');
@@ -1968,6 +2096,7 @@ mark {
     const termos = termosBusca();
 
     return Estado.registros.filter(r => {
+      if (Estado.somenteFavoritos && !Estado.favoritos.has(r.id)) return false;
       if (Estado.filtroTipo !== 'TODOS' && r.tipo !== Estado.filtroTipo) return false;
       if (Estado.filtroCategoria && r.categoria !== Estado.filtroCategoria) return false;
 
@@ -2011,9 +2140,11 @@ mark {
     const caminhoSimples = r.subcategoria ? r.categoria + ' › ' + r.subcategoria : r.categoria;
 
     return `
-      <article class="card tipo-${r.tipo}" data-id="${r.id}">
+      <article class="card tipo-${r.tipo} ${favorito ? 'favorito' : ''}" data-id="${r.id}"
+               style="--matiz:${matizCategoria(r.categoria)}">
         <div class="card-topo">
           <span class="badge badge-${r.tipo}">${rotuloTipo}</span>
+          <span class="ponto-categoria" aria-hidden="true"></span>
           <span class="card-categoria" title="${escaparHtml(caminhoSimples)}">${caminho}</span>
           <button class="btn-favorito ${favorito ? 'ativo' : ''}" data-acao="favoritar"
                   title="${favorito ? 'Remover dos favoritos' : 'Favoritar'}">${favorito ? '⭐' : '☆'}</button>
@@ -2050,10 +2181,12 @@ mark {
     // Contadores gerais (independem dos filtros).
     $('#qtd-faq').textContent = Estado.registros.filter(r => r.tipo === 'FAQ').length;
     $('#qtd-tab').textContent = Estado.registros.filter(r => r.tipo === 'TAB').length;
+    atualizarContadorFavoritos();
 
     // Contador de resultados (só aparece quando há filtro/busca ativa).
     const filtrando = Estado.busca.trim() || Estado.filtroTipo !== 'TODOS' ||
-                      Estado.filtroCategoria || Estado.filtroSubcategoria;
+                      Estado.filtroCategoria || Estado.filtroSubcategoria ||
+                      Estado.somenteFavoritos;
     $('#sep-resultados').hidden = !filtrando;
     $('#qtd-resultados').hidden = !filtrando;
     if (filtrando) {
@@ -2063,12 +2196,18 @@ mark {
     if (!resultados.length) {
       lista.hidden = true;
       vazio.hidden = false;
-      $('#vazio-titulo').textContent = Estado.registros.length
-        ? 'Nenhum resultado para os filtros atuais'
-        : 'A base ainda está vazia';
-      $('#vazio-texto').textContent = Estado.registros.length
-        ? 'Tente outro termo ou limpe os filtros.'
-        : 'Cadastre a primeira FAQ ou Tabulação para começar.';
+      if (Estado.somenteFavoritos && !Estado.favoritos.size) {
+        $('#vazio-titulo').textContent = 'Você ainda não favoritou nada';
+        $('#vazio-texto').textContent =
+          'Use a estrela no canto do card para deixar à mão os textos que mais usa.';
+      } else {
+        $('#vazio-titulo').textContent = Estado.registros.length
+          ? 'Nenhum resultado para os filtros atuais'
+          : 'A base ainda está vazia';
+        $('#vazio-texto').textContent = Estado.registros.length
+          ? 'Tente outro termo ou limpe os filtros.'
+          : 'Cadastre a primeira FAQ ou Tabulação para começar.';
+      }
       return;
     }
 
@@ -2130,10 +2269,23 @@ mark {
     const card = cardDe(id);
     if (!card) { renderizar(); return; }
 
+    card.classList.toggle('favorito', favorito);
+
     const botao = card.querySelector('[data-acao="favoritar"]');
     botao.classList.toggle('ativo', favorito);
     botao.textContent = favorito ? '⭐' : '☆';
     botao.title = favorito ? 'Remover dos favoritos' : 'Favoritar';
+
+    atualizarContadorFavoritos();
+
+    // Com o filtro de favoritos ligado, desfavoritar precisa remover o card.
+    if (Estado.somenteFavoritos && !favorito) renderizar();
+  }
+
+  /** Mantém o contador de favoritos em dia sem redesenhar a lista. */
+  function atualizarContadorFavoritos() {
+    const total = Estado.registros.filter(r => Estado.favoritos.has(r.id)).length;
+    $('#qtd-fav').textContent = total;
   }
 
   /** Expande/recolhe apenas o card alvo, sem redesenhar a lista. */
@@ -2387,6 +2539,17 @@ mark {
         Estado.filtroTipo = chip.dataset.filtro;
         renderizar();
       });
+    });
+
+    // Favoritos: eixo independente, combina com tipo, categoria e busca.
+    $('#btn-favoritos').addEventListener('click', () => {
+      Estado.somenteFavoritos = !Estado.somenteFavoritos;
+      const botao = $('#btn-favoritos');
+      botao.classList.toggle('ativo', Estado.somenteFavoritos);
+      botao.setAttribute('aria-pressed', String(Estado.somenteFavoritos));
+      botao.querySelector('.btn-favoritos-icone').textContent =
+        Estado.somenteFavoritos ? '⭐' : '☆';
+      renderizar();
     });
 
     // Filtro por categoria — reinicia o nível seguinte da hierarquia.

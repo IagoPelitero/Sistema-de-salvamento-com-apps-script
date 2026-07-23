@@ -3,7 +3,7 @@
 **Versão auditada:** 8 arquivos · 1.776 linhas
 `Code.gs` (32) · `Database.gs` (270) · `Utils.gs` (97) · `Index.html` (55) · `Home.html` (62) · `Cadastro.html` (62) · `Style.html` (601) · `Script.html` (597)
 
-**Status:** relatório de análise + **Fases 0, 1, 2 e 3 executadas** (seções 8 a 11).
+**Status:** relatório de análise + **Fases 0 a 4 executadas** (seções 8 a 12).
 
 **Requisito adicional incorporado:** hierarquia Categoria → Subcategoria (R-01, seção 2.7).
 
@@ -289,7 +289,7 @@ Uma fase por entrega, cada uma independente e reversível. Nenhuma exige migraç
 | **1 — Fundação visual** | Design tokens, escala de espaçamento, tipografia, hierarquia dos cards, hover/foco | `Style.html` (só CSS) | Baixo | ✅ **Concluída** |
 | **2 — Hierarquia (R-01)** | Coluna Subcategoria, formulário em cascata, filtros, breadcrumb nos cards | `Database.gs`, `Utils.gs`, `Cadastro.html`, `Home.html`, `Script.html`, `Style.html` | Médio | ✅ **Concluída** |
 | **3 — Motor de busca** | P-01 (índice pré-computado, já incluindo subcategoria), P-03 (render cirúrgico), AND implícito, histórico de busca | `Script.html`, `Home.html`, `Style.html` | Médio | ✅ **Concluída** |
-| **4 — Cards e categorias** | Cores por categoria, badges, densidade, favoritos mais visíveis | `Style.html`, `Script.html` | Baixo | Pendente |
+| **4 — Cards e categorias** | Cores por categoria, badges, densidade, favoritos mais visíveis | `Style.html`, `Script.html`, `Home.html` | Baixo | ✅ **Concluída** |
 | **5 — Acessibilidade** | AC-01 a AC-04, *focus trap*, navegação por teclado | `Home.html`, `Index.html`, `Script.html` | Baixo | Pendente |
 | **6 — Dashboard** | Indicadores a partir do cache, incluindo uso por categoria/subcategoria | novo `Dashboard.html` + `Script.html` | Baixo | Pendente |
 | **7 — Configurações** | Tela de preferências (tema, densidade, animações, busca) | novo `Config.html` + `Script.html` | Baixo | Pendente |
@@ -508,3 +508,42 @@ Favoritar recriava os 400 cards da lista para trocar uma estrela. Agora só o ca
 ### Compatibilidade
 
 Nenhuma alteração no servidor, na planilha ou no formato dos dados. Os campos `_n`, `_busca` e `_ts` existem **apenas no cache do navegador** e nunca são enviados de volta ao Apps Script.
+
+
+---
+
+## 12. Fase 4 — Executada ✅
+
+**Arquivos alterados:** `Script.html`, `Home.html`, `Style.html`.
+
+### Cor por categoria, sem cadastro
+
+A cor sai de um **hash determinístico do nome da categoria**: nenhuma coluna nova na planilha, nenhuma tela de configuração, nenhum trabalho para a equipe. "Cartão de crédito" recebe o mesmo tom em qualquer navegador, hoje e daqui a um ano.
+
+| Decisão | Motivo |
+|---|---|
+| Hash sobre o nome **normalizado** | "Cartão" e "cartao" caem na mesma cor |
+| Matiz do JS, saturação/luminosidade do tema | A mesma categoria fica legível nos três temas — no dark, a luminosidade sobe para 64% |
+| **Ponto colorido**, não a barra lateral | A barra lateral já codifica o **tipo** (FAQ/Tabulação). Dois significados na mesma marca visual seria ambíguo |
+| 18 matizes espaçados em 20° | Com 10 tons, o paradoxo do aniversário deixava 10 categorias em ~6,5 cores. Com 18, medimos **9 de 10** |
+| Etapa de avalanche no hash | Sem ela, "Cartão de crédito" e "Cartão de débito" caíam em tons vizinhos |
+
+### Favoritos como eixo próprio
+
+Novo botão **⭐ Favoritos** ao lado dos chips. Ele **não** é um quarto tipo: é um eixo independente que combina com tipo, categoria, subcategoria e busca — testado nas seis combinações. Acompanha contador próprio e um estado vazio específico ("Você ainda não favoritou nada"), em vez da mensagem genérica de filtro.
+
+Cartões favoritados ganham borda na cor da própria categoria e estrela sempre visível.
+
+### Bug encontrado durante a fase
+
+A primeira versão do hash usava `hash ^= hash >>> 16` como etapa final. Operadores bitwise em JavaScript devolvem **int32 com sinal**, então valores acima de 2³¹ viravam negativos — e `MATIZES[índice negativo]` retornava `undefined`, deixando parte das categorias sem cor. O teste de dispersão expôs o problema (10 categorias → 6 tons, com `NaN` na comparação). Corrigido com `>>> 0` ao final de cada etapa.
+
+### Correção de acessibilidade antecipada
+
+Os chips usavam `role="tablist"` / `role="tab"` sem `aria-selected` e sem nenhum `tabpanel` associado — pior que não ter ARIA, porque o leitor de tela anuncia "aba" e procura um painel inexistente (achado AC-01). Trocado por `role="group"`. O botão de favoritos já nasceu com `aria-pressed`.
+
+### Validação executada
+
+- ✅ `node --check` no cliente
+- ✅ **19 verificações:** determinismo, insensibilidade a acento/caixa, todos os valores dentro da paleta, dispersão de 9/10, estabilidade entre chamadas, categoria vazia tratada, nomes parecidos com tons distantes, seis combinações de filtros, integridade do marcador e dos tokens de tema
+- ✅ Simulador reconstruído sem elementos ausentes
