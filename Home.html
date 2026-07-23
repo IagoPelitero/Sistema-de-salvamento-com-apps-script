@@ -5,15 +5,20 @@
 
   <!-- Barra de pesquisa e filtros -->
   <div class="painel-busca">
-    <div class="campo-busca">
-      <span class="icone-busca">🔍</span>
-      <input
-        type="search"
-        id="campo-pesquisa"
-        placeholder="Pesquisar por categoria, descrição, texto ou autor…"
-        autocomplete="off"
-        spellcheck="false">
-      <kbd class="so-desktop">Ctrl K</kbd>
+    <div class="busca-wrapper">
+      <div class="campo-busca">
+        <span class="icone-busca">🔍</span>
+        <input
+          type="search"
+          id="campo-pesquisa"
+          placeholder="Pesquisar — várias palavras filtram por todas elas"
+          autocomplete="off"
+          spellcheck="false">
+        <kbd class="so-desktop">Ctrl K</kbd>
+      </div>
+
+      <!-- Buscas recentes (abre ao focar o campo vazio) -->
+      <div class="historico" id="historico-busca" hidden></div>
     </div>
 
     <div class="linha-filtros">
@@ -24,10 +29,16 @@
         <button class="chip chip-tab" data-filtro="TAB" role="tab">Tabulações</button>
       </div>
 
-      <!-- Filtro por categoria -->
-      <select id="filtro-categoria" title="Filtrar por categoria">
-        <option value="">Todas as categorias</option>
-      </select>
+      <!-- Filtros hierárquicos: subcategoria depende da categoria -->
+      <div class="filtros-hierarquia">
+        <select id="filtro-categoria" title="Filtrar por categoria" aria-label="Filtrar por categoria">
+          <option value="">Todas as categorias</option>
+        </select>
+        <span class="hierarquia-seta" aria-hidden="true">›</span>
+        <select id="filtro-subcategoria" title="Filtrar por subcategoria" aria-label="Filtrar por subcategoria" disabled>
+          <option value="">Todas as subcategorias</option>
+        </select>
+      </div>
     </div>
 
     <!-- Contadores -->

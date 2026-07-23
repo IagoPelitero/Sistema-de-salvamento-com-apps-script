@@ -73,7 +73,7 @@ function obterUsuario_() {
 /**
  * Valida e higieniza os campos de texto de um registro.
  * Lança erro amigável caso algum campo obrigatório esteja vazio.
- * @param {Object} dados - {tipo, categoria, descricao, texto}
+ * @param {Object} dados - {tipo, categoria, subcategoria, descricao, texto}
  * @returns {Object} Dados com espaços aparados.
  */
 function validarDados_(dados) {
@@ -82,6 +82,10 @@ function validarDados_(dados) {
   var limpo = {
     tipo: String(dados.tipo || '').trim().toUpperCase(),
     categoria: String(dados.categoria || '').trim(),
+    // Subcategoria é OPCIONAL por decisão de projeto: registros
+    // anteriores à hierarquia continuam válidos sem preenchê-la,
+    // o que dispensa qualquer migração obrigatória.
+    subcategoria: String(dados.subcategoria || '').trim(),
     descricao: String(dados.descricao || '').trim(),
     texto: String(dados.texto || '').trim()
   };
@@ -90,6 +94,8 @@ function validarDados_(dados) {
     throw new Error('Tipo inválido. Use FAQ ou Tabulação.');
   }
   if (!limpo.categoria) throw new Error('Informe a categoria.');
+  if (limpo.categoria.length > 80) throw new Error('Categoria muito longa (máximo 80 caracteres).');
+  if (limpo.subcategoria.length > 80) throw new Error('Subcategoria muito longa (máximo 80 caracteres).');
   if (!limpo.descricao) throw new Error('Informe a descrição/cenário.');
   if (!limpo.texto) throw new Error('Informe o texto.');
 

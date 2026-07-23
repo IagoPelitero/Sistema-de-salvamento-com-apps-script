@@ -8,13 +8,16 @@ Rápido, responsivo e sem dependências externas — funciona no desktop e no ce
 
 ## ✨ Funcionalidades
 
+- 🗂️ **Hierarquia em 3 níveis** — `Cartão de crédito › Cancelamento › Qual motivo?`, para FAQs e Tabulações
 - 🔍 **Pesquisa em tempo real** — resultados enquanto você digita, sem botão de pesquisar
 - 🔤 **Busca sem acentos** — pesquisar `cartao` encontra "Cartão", com destaque do termo nos resultados
+- 🧩 **Várias palavras filtram por todas elas** — `cartao cancelamento` exige as duas, em qualquer campo e ordem
+- 🕐 **Histórico de pesquisa** — as últimas 8 buscas, ao focar o campo vazio
 - 📋 **Copiar com um clique** — texto enviado direto para a área de transferência
 - ➕ **Cadastro e edição** de FAQs e Tabulações em formulário simples
 - 🗑️ **Exclusão** com modal de confirmação
 - ⭐ **Favoritos** — salvos no navegador e exibidos sempre no topo da lista
-- 🏷️ **Filtros rápidos** — Todos / FAQs / Tabulações + filtro por categoria
+- 🏷️ **Filtros rápidos** — Todos / FAQs / Tabulações + filtros em cascata por categoria e subcategoria
 - 📊 **Contadores** de FAQs e Tabulações no topo da tela
 - 📖 **Ver mais / Ver menos** para textos longos
 - 🖨️ **Impressão / exportação em PDF** de qualquer registro individual
@@ -34,9 +37,17 @@ Rápido, responsivo e sem dependências externas — funciona no desktop e no ce
 ├── Index.html       → Shell da aplicação (menu, modal, toasts, includes)
 ├── Home.html        → Tela principal (busca, filtros, lista de cards)
 ├── Cadastro.html    → Tela de cadastro/edição
-├── Style.html       → CSS completo com os 3 temas (variáveis CSS)
+├── Style.html       → CSS completo: design tokens + 3 temas
 └── Script.html      → Lógica do cliente (ES6+, sem bibliotecas)
+
+Documentação e apoio (não fazem parte do deploy):
+├── AUDITORIA.md     → Auditoria técnica e registro das fases executadas
+└── simulador.html   → Executa o cliente real contra um servidor em memória
 ```
+
+### Simulador
+
+Abra `simulador.html` em qualquer navegador para testar o sistema sem publicar nada. Ele roda o **código de produção do cliente**, com dados fictícios em memória — útil para validar alterações antes do deploy.
 
 ### Fluxo de dados
 
@@ -71,14 +82,24 @@ A planilha **"Base de Conhecimento — Dados"** é criada **automaticamente** no
 | Coluna | Descrição |
 |---|---|
 | ID | Sequencial automático por tipo |
-| Categoria | Agrupador do conteúdo (ex.: Cartão, Conta) |
-| Descrição/Cenário | Quando o conteúdo deve ser usado |
+| Categoria | 1º nível da hierarquia (ex.: Cartão de crédito) |
+| Descrição/Cenário | 3º nível — quando o conteúdo deve ser usado |
 | Texto | Conteúdo completo copiado pelo atendente |
 | Criado por | E-mail via `Session.getActiveUser().getEmail()` |
 | Data criação | `dd/MM/yyyy HH:mm` (fuso America/Sao_Paulo) |
 | Última alteração | Atualizada a cada edição |
+| Subcategoria (H) | 2º nível da hierarquia — **opcional**, acrescentada ao final |
 
 > As colunas de data usam formato **texto** (`@`) na planilha, evitando conversão automática do Sheets e deslocamento de fuso horário na leitura.
+
+### Hierarquia
+
+```
+Cartão de crédito  ›  Cancelamento  ›  Qual motivo?
+   Categoria           Subcategoria      Descrição/Cenário
+```
+
+A coluna `Subcategoria` é **aditiva**: entra ao final, só é criada quando a célula H1 está vazia, e registros anteriores continuam válidos com o campo em branco. **Não há migração obrigatória** — a classificação pode ser feita aos poucos, na edição do dia a dia.
 
 ---
 
@@ -127,6 +148,9 @@ Em **Configurações do projeto** (⚙️) → **Fuso horário** → `(GMT-03:00
 | Pesquisar | Digite no campo de busca (ou `Ctrl + K`) — busca em categoria, descrição, texto e autor |
 | Filtrar por tipo | Chips **Todos / FAQs / Tabulações** |
 | Filtrar por categoria | Seletor ao lado dos chips |
+| Filtrar por subcategoria | Segundo seletor — habilita ao escolher uma categoria |
+| Buscar por várias palavras | Separe por espaço: `cartao cancelamento` exige as duas |
+| Ver buscas recentes | Clique no campo de busca vazio |
 | Copiar texto | Botão **📋 Copiar** no card |
 | Novo cadastro | Botão **➕ Novo Cadastro** (ou `Ctrl + N`) |
 | Editar | Botão **✏️** no card (o tipo não pode ser alterado na edição) |
@@ -152,7 +176,9 @@ O tema escolhido fica salvo no `localStorage` do navegador. Cards de **FAQ** tê
 ## ⚡ Performance
 
 - **1 chamada ao servidor** por sessão para leitura — todo o resto é cache local
-- Renderização por *string building* + delegação de eventos (uma lista com milhares de registros continua fluida)
+- **Índice de busca pré-computado**: a normalização de acentos acontece uma vez por registro, no carregamento. Durante a digitação sobra apenas `indexOf` — medido em ~460× mais rápido que normalizar a cada tecla
+- **Atualização cirúrgica**: favoritar ou expandir um card não redesenha a lista inteira
+- Renderização por *string building* + delegação de eventos
 - Busca com *debounce* de 120 ms para digitação sem travamentos
 - Sem jQuery, sem frameworks, sem CDNs — apenas JavaScript moderno (ES6+)
 
@@ -161,7 +187,8 @@ O tema escolhido fica salvo no `localStorage` do navegador. Cards de **FAQ** tê
 ## 🔒 Observações
 
 - **Não há login nem controle de permissões** — qualquer pessoa com acesso à URL pode visualizar, cadastrar, editar e excluir (por desenho).
-- Favoritos e tema são **por navegador** (localStorage), não sincronizados entre dispositivos.
+- Favoritos, tema e histórico de pesquisa são **por navegador** (localStorage), não sincronizados entre dispositivos.
+- A base de dados **nunca é recriada automaticamente** quando já existe um ID registrado. Se a planilha for realmente excluída, execute `recriarBaseDeDados()` manualmente no editor do Apps Script.
 - Concorrência de escrita é tratada com `LockService` (timeout de 10 s com mensagem amigável).
 
 ---

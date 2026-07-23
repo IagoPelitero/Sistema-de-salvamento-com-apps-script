@@ -18,13 +18,22 @@
 
   const LIMITE_TEXTO_CURTO = 320; // acima disso o card ganha "Ver mais"
 
+  /**
+   * Sentinela para o filtro "Sem subcategoria".
+   * Usa um caractere de controle para nunca colidir com uma
+   * subcategoria real que o usuário venha a chamar de "Geral".
+   */
+  const SEM_SUB = '\u0001';
+
   const Estado = {
     registros: [],            // cache local — carregado uma única vez
     carregado: false,
     filtroTipo: 'TODOS',      // TODOS | FAQ | TAB
     filtroCategoria: '',
+    filtroSubcategoria: '',
     busca: '',
     favoritos: new Set(),
+    historico: [],
     expandidos: new Set(),    // IDs com texto expandido
     editandoId: null,         // ID em edição (null = novo cadastro)
     tipoForm: 'FAQ',
@@ -58,37 +67,101 @@
   }
 
   /**
-   * Destaca as ocorrências do termo pesquisado (sem diferenciar
-   * acentos/maiúsculas), escapando o HTML do texto original.
+   * Normaliza preservando o alinhamento de índices com o texto original.
+   * Cada caractere vira exatamente um caractere normalizado, para que
+   * uma posição encontrada na versão normalizada valha também na original.
+   * @param {string} texto
+   * @returns {string}
    */
-  function destacar(texto, termo) {
-    const original = String(texto);
-    if (!termo) return escaparHtml(original);
-
-    // Normaliza caractere a caractere para manter os índices alinhados.
-    const base = Array.from(original)
+  function normalizarAlinhado(texto) {
+    return Array.from(String(texto))
       .map(c => {
         const n = c.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
         return n.length === 1 ? n : c.toLowerCase();
       })
       .join('');
+  }
 
-    const alvo = normalizar(termo);
-    const partes = [];
-    let pos = 0;
+  /**
+   * OTIMIZAÇÃO P-01 — índice de busca pré-computado.
+   *
+   * Antes, cada tecla digitada refazia a normalização caractere a
+   * caractere do texto completo de TODOS os registros visíveis. Com
+   * 400 registros de 1.500 caracteres, eram centenas de milhares de
+   * chamadas de normalize() por tecla.
+   *
+   * Agora esse trabalho acontece UMA vez por registro, no carregamento
+   * (e ao criar/editar). Durante a digitação sobra apenas indexOf.
+   *
+   * @param {Object} r - Registro do cache.
+   * @returns {Object} O mesmo registro, com campos derivados.
+   */
+  function indexar(r) {
+    r._n = {
+      categoria: normalizarAlinhado(r.categoria),
+      subcategoria: normalizarAlinhado(r.subcategoria),
+      descricao: normalizarAlinhado(r.descricao),
+      texto: normalizarAlinhado(r.texto),
+      criadoPor: normalizarAlinhado(r.criadoPor)
+    };
 
-    while (pos < original.length) {
-      const achou = base.indexOf(alvo, pos);
-      if (achou === -1) {
-        partes.push(escaparHtml(original.slice(pos)));
-        break;
+    // Campo único usado pelo filtro (evita 5 buscas separadas por registro).
+    r._busca = [r._n.categoria, r._n.subcategoria, r._n.descricao,
+                r._n.texto, r._n.criadoPor].join(' ');
+
+    // Timestamp pré-calculado: evita parse de data a cada comparação do sort.
+    r._ts = tempoDe(r.dataCriacao);
+    return r;
+  }
+
+  /** Termos da busca atual (múltiplas palavras = AND implícito). */
+  function termosBusca() {
+    return normalizar(Estado.busca).split(/\s+/).filter(Boolean);
+  }
+
+  /**
+   * Destaca todos os termos pesquisados em um campo já indexado.
+   * Recebe a versão normalizada pronta, então não normaliza nada aqui.
+   * @param {string} original - Texto exibido.
+   * @param {string} base - Versão normalizada e alinhada.
+   * @param {string[]} termos - Termos normalizados.
+   * @returns {string} HTML escapado, com <mark> nas ocorrências.
+   */
+  function destacar(original, base, termos) {
+    original = String(original);
+    if (!termos || !termos.length) return escaparHtml(original);
+
+    // 1. Coleta as ocorrências de cada termo.
+    const marcas = [];
+    termos.forEach(termo => {
+      let pos = 0;
+      while (pos <= base.length) {
+        const achou = base.indexOf(termo, pos);
+        if (achou === -1) break;
+        marcas.push([achou, achou + termo.length]);
+        pos = achou + termo.length;
       }
-      partes.push(escaparHtml(original.slice(pos, achou)));
-      partes.push('<mark>' + escaparHtml(original.slice(achou, achou + alvo.length)) + '</mark>');
-      pos = achou + alvo.length;
-    }
+    });
 
-    return partes.join('');
+    if (!marcas.length) return escaparHtml(original);
+
+    // 2. Funde intervalos sobrepostos (termos que se cruzam no texto).
+    marcas.sort((a, b) => a[0] - b[0]);
+    const fundidas = [];
+    marcas.forEach(m => {
+      const ultima = fundidas[fundidas.length - 1];
+      if (ultima && m[0] <= ultima[1]) ultima[1] = Math.max(ultima[1], m[1]);
+      else fundidas.push([m[0], m[1]]);
+    });
+
+    // 3. Monta a saída escapando tudo que vem do usuário.
+    let saida = '', pos = 0;
+    fundidas.forEach(par => {
+      saida += escaparHtml(original.slice(pos, par[0]));
+      saida += '<mark>' + escaparHtml(original.slice(par[0], par[1])) + '</mark>';
+      pos = par[1];
+    });
+    return saida + escaparHtml(original.slice(pos));
   }
 
   /** Converte "dd/MM/yyyy HH:mm" em timestamp para ordenação. */
@@ -113,12 +186,40 @@
     }, 2600);
   }
 
-  /** Executa uma função do servidor retornando Promise. */
+  /** Tempo máximo de espera por uma resposta do servidor (ms). */
+  const TIMEOUT_SERVIDOR = 30000;
+
+  /**
+   * Executa uma função do servidor retornando Promise.
+   *
+   * CORREÇÃO B-02: o google.script.run pode nunca chamar nenhum dos
+   * handlers (conexão perdida, script suspenso). Sem timeout, o botão
+   * ficava travado em "Salvando…" para sempre e o usuário perdia o
+   * conteúdo digitado. O guard "finalizado" garante que a Promise
+   * resolva ou rejeite uma única vez.
+   */
   function servidor(funcao, ...args) {
     return new Promise((resolver, rejeitar) => {
+      let finalizado = false;
+
+      const temporizador = setTimeout(() => {
+        if (finalizado) return;
+        finalizado = true;
+        rejeitar(new Error('O servidor demorou para responder. Verifique sua conexão e tente novamente.'));
+      }, TIMEOUT_SERVIDOR);
+
+      const encerrar = (acao) => (valor) => {
+        if (finalizado) return;
+        finalizado = true;
+        clearTimeout(temporizador);
+        acao(valor);
+      };
+
       google.script.run
-        .withSuccessHandler(resolver)
-        .withFailureHandler(err => rejeitar(new Error(err && err.message ? err.message : 'Erro no servidor.')))
+        .withSuccessHandler(encerrar(resolver))
+        .withFailureHandler(encerrar(err => {
+          rejeitar(new Error(err && err.message ? err.message : 'Erro no servidor.'));
+        }))
         [funcao](...args);
     });
   }
@@ -138,6 +239,63 @@
     } catch (e) {
       aplicarTema('portobank', false);
     }
+
+    carregarHistorico();
+  }
+
+  /** Máximo de buscas guardadas no histórico. */
+  const LIMITE_HISTORICO = 8;
+
+  function carregarHistorico() {
+    try {
+      const bruto = JSON.parse(localStorage.getItem('bc_historico') || '[]');
+      Estado.historico = Array.isArray(bruto) ? bruto.slice(0, LIMITE_HISTORICO) : [];
+    } catch (e) {
+      Estado.historico = [];
+    }
+  }
+
+  /**
+   * Registra um termo no histórico. Chamado apenas quando a busca é
+   * "confirmada" (Enter ou uso de um resultado) — não a cada tecla,
+   * o que encheria a lista de fragmentos como "car", "cart", "carta".
+   */
+  function registrarBusca(termo) {
+    termo = String(termo || '').trim();
+    if (termo.length < 3) return;
+
+    Estado.historico = [termo].concat(
+      Estado.historico.filter(t => normalizar(t) !== normalizar(termo))
+    ).slice(0, LIMITE_HISTORICO);
+
+    try {
+      localStorage.setItem('bc_historico', JSON.stringify(Estado.historico));
+    } catch (e) { /* armazenamento indisponível — ignora */ }
+  }
+
+  function limparHistorico() {
+    Estado.historico = [];
+    try { localStorage.removeItem('bc_historico'); } catch (e) { /* ignora */ }
+    fecharHistorico();
+    toast('Histórico de pesquisa limpo.');
+  }
+
+  function abrirHistorico() {
+    const caixa = $('#historico-busca');
+    if (!Estado.historico.length) { caixa.hidden = true; return; }
+
+    caixa.innerHTML =
+      '<div class="historico-titulo">Buscas recentes</div>' +
+      Estado.historico.map(t =>
+        `<button class="historico-item" data-termo="${escaparHtml(t)}">🕐 ${escaparHtml(t)}</button>`
+      ).join('') +
+      '<button class="historico-limpar" data-acao="limpar">Limpar histórico</button>';
+
+    caixa.hidden = false;
+  }
+
+  function fecharHistorico() {
+    $('#historico-busca').hidden = true;
   }
 
   function salvarFavoritos() {
@@ -167,7 +325,7 @@
   async function carregarRegistros() {
     try {
       const resposta = await servidor('getAllRecords');
-      Estado.registros = resposta.registros || [];
+      Estado.registros = (resposta.registros || []).map(indexar);
       Estado.carregado = true;
       $('#skeleton').hidden = true;
       atualizarCategorias();
@@ -185,35 +343,131 @@
    * Filtros, pesquisa e renderização
    * -------------------------------------------------------- */
 
-  /** Popula o select de categorias com valores únicos do cache. */
+  /**
+   * Monta o índice hierárquico Categoria → Set(Subcategorias)
+   * a partir do cache local. Recalculado apenas quando os dados mudam.
+   * @returns {Map<string, Set<string>>}
+   */
+  function mapaHierarquia() {
+    const mapa = new Map();
+    Estado.registros.forEach(r => {
+      if (!r.categoria) return;
+      if (!mapa.has(r.categoria)) mapa.set(r.categoria, new Set());
+      if (r.subcategoria) mapa.get(r.categoria).add(r.subcategoria);
+    });
+    return mapa;
+  }
+
+  /** Ordenação alfabética respeitando acentuação do português. */
+  function ordemPtBr(a, b) {
+    return a.localeCompare(b, 'pt-BR');
+  }
+
+  /** Popula os selects de categoria/subcategoria e os datalists do formulário. */
   function atualizarCategorias() {
-    const categorias = [...new Set(Estado.registros.map(r => r.categoria).filter(Boolean))]
-      .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    const mapa = mapaHierarquia();
+    const categorias = [...mapa.keys()].sort(ordemPtBr);
 
     const select = $('#filtro-categoria');
     const valorAtual = select.value;
     select.innerHTML = '<option value="">Todas as categorias</option>' +
       categorias.map(c => `<option value="${escaparHtml(c)}">${escaparHtml(c)}</option>`).join('');
-    if (categorias.includes(valorAtual)) select.value = valorAtual;
+
+    if (categorias.includes(valorAtual)) {
+      select.value = valorAtual;
+    } else if (valorAtual) {
+      // CORREÇÃO B-01: a categoria selecionada deixou de existir (o último
+      // registro dela foi excluído). O <select> voltava sozinho para "Todas",
+      // mas Estado.filtroCategoria mantinha o valor antigo — a lista ficava
+      // permanentemente vazia, sem motivo aparente, até recarregar a página.
+      select.value = '';
+      Estado.filtroCategoria = '';
+    }
 
     // Datalist do formulário (sugestões de categoria).
     $('#lista-categorias').innerHTML =
       categorias.map(c => `<option value="${escaparHtml(c)}">`).join('');
+
+    atualizarSubcategorias(mapa);
+    atualizarSugestoesSubcategoria(mapa);
   }
 
-  /** Aplica filtros e busca sobre o cache local. */
+  /**
+   * Preenche o select de subcategoria em cascata: só oferece as
+   * subcategorias que existem dentro da categoria selecionada.
+   * @param {Map} [mapa] - Índice já calculado, se disponível.
+   */
+  function atualizarSubcategorias(mapa) {
+    mapa = mapa || mapaHierarquia();
+    const select = $('#filtro-subcategoria');
+    const categoria = Estado.filtroCategoria;
+
+    if (!categoria) {
+      select.innerHTML = '<option value="">Todas as subcategorias</option>';
+      select.value = '';
+      select.disabled = true;
+      Estado.filtroSubcategoria = '';
+      return;
+    }
+
+    const subs = [...(mapa.get(categoria) || [])].sort(ordemPtBr);
+    const temSemSub = Estado.registros.some(r => r.categoria === categoria && !r.subcategoria);
+
+    select.innerHTML = '<option value="">Todas as subcategorias</option>' +
+      subs.map(sub => `<option value="${escaparHtml(sub)}">${escaparHtml(sub)}</option>`).join('') +
+      (temSemSub ? `<option value="${SEM_SUB}">Sem subcategoria</option>` : '');
+
+    select.disabled = subs.length === 0 && !temSemSub;
+
+    // Mesma proteção do B-01, agora no segundo nível da hierarquia.
+    const aindaExiste = Estado.filtroSubcategoria === SEM_SUB
+      ? temSemSub
+      : subs.includes(Estado.filtroSubcategoria);
+
+    if (Estado.filtroSubcategoria && !aindaExiste) Estado.filtroSubcategoria = '';
+    select.value = Estado.filtroSubcategoria;
+  }
+
+  /**
+   * Sugestões de subcategoria no formulário, filtradas pela categoria
+   * já digitada. Sem categoria conhecida, sugere todas as existentes.
+   * @param {Map} [mapa]
+   */
+  function atualizarSugestoesSubcategoria(mapa) {
+    mapa = mapa || mapaHierarquia();
+    const campo = $('#campo-categoria');
+    const categoria = campo ? campo.value.trim() : '';
+
+    const subs = (categoria && mapa.has(categoria))
+      ? [...mapa.get(categoria)]
+      : [...new Set(Estado.registros.map(r => r.subcategoria).filter(Boolean))];
+
+    $('#lista-subcategorias').innerHTML =
+      subs.sort(ordemPtBr).map(sub => `<option value="${escaparHtml(sub)}">`).join('');
+  }
+
+  /**
+   * Aplica filtros e busca sobre o cache local.
+   * Múltiplas palavras funcionam como AND implícito: "cartao cancelamento"
+   * exige as duas, em qualquer campo e em qualquer ordem.
+   */
   function filtrar() {
-    const termo = normalizar(Estado.busca.trim());
+    const termos = termosBusca();
 
     return Estado.registros.filter(r => {
       if (Estado.filtroTipo !== 'TODOS' && r.tipo !== Estado.filtroTipo) return false;
       if (Estado.filtroCategoria && r.categoria !== Estado.filtroCategoria) return false;
-      if (!termo) return true;
 
-      return normalizar(r.categoria).includes(termo) ||
-             normalizar(r.descricao).includes(termo) ||
-             normalizar(r.texto).includes(termo) ||
-             normalizar(r.criadoPor).includes(termo);
+      if (Estado.filtroSubcategoria) {
+        if (Estado.filtroSubcategoria === SEM_SUB) {
+          if (r.subcategoria) return false;
+        } else if (r.subcategoria !== Estado.filtroSubcategoria) {
+          return false;
+        }
+      }
+
+      if (!termos.length) return true;
+      return termos.every(termo => r._busca.includes(termo));
     });
   }
 
@@ -223,36 +477,43 @@
       const favA = Estado.favoritos.has(a.id) ? 1 : 0;
       const favB = Estado.favoritos.has(b.id) ? 1 : 0;
       if (favA !== favB) return favB - favA;
-      return tempoDe(b.dataCriacao) - tempoDe(a.dataCriacao);
+      return b._ts - a._ts;
     });
   }
 
   /** Monta o HTML de um card de registro. */
-  function htmlCard(r) {
-    const termo = Estado.busca.trim();
+  function htmlCard(r, termos) {
     const favorito = Estado.favoritos.has(r.id);
     const longo = r.texto.length > LIMITE_TEXTO_CURTO;
     const expandido = Estado.expandidos.has(r.id);
     const editado = r.ultimaAlteracao && r.ultimaAlteracao !== r.dataCriacao;
     const rotuloTipo = r.tipo === 'FAQ' ? 'FAQ' : 'Tabulação';
 
+    // Caminho hierárquico: Categoria › Subcategoria
+    const caminho = r.subcategoria
+      ? destacar(r.categoria, r._n.categoria, termos) +
+        '<span class="caminho-sep">›</span>' +
+        destacar(r.subcategoria, r._n.subcategoria, termos)
+      : destacar(r.categoria, r._n.categoria, termos);
+    const caminhoSimples = r.subcategoria ? r.categoria + ' › ' + r.subcategoria : r.categoria;
+
     return `
       <article class="card tipo-${r.tipo}" data-id="${r.id}">
         <div class="card-topo">
           <span class="badge badge-${r.tipo}">${rotuloTipo}</span>
-          <span class="card-categoria" title="${escaparHtml(r.categoria)}">${destacar(r.categoria, termo)}</span>
+          <span class="card-categoria" title="${escaparHtml(caminhoSimples)}">${caminho}</span>
           <button class="btn-favorito ${favorito ? 'ativo' : ''}" data-acao="favoritar"
                   title="${favorito ? 'Remover dos favoritos' : 'Favoritar'}">${favorito ? '⭐' : '☆'}</button>
         </div>
 
-        <h3 class="card-descricao">${destacar(r.descricao, termo)}</h3>
+        <h3 class="card-descricao">${destacar(r.descricao, r._n.descricao, termos)}</h3>
 
-        <div class="card-texto ${longo && !expandido ? 'recolhido' : ''}">${destacar(r.texto, termo)}</div>
+        <div class="card-texto ${longo && !expandido ? 'recolhido' : ''}">${destacar(r.texto, r._n.texto, termos)}</div>
         ${longo ? `<button class="btn-expandir" data-acao="expandir">${expandido ? 'Ver menos ▲' : 'Ver mais ▼'}</button>` : ''}
 
         <div class="card-rodape">
           <div class="card-meta">
-            <span title="${escaparHtml(r.criadoPor)}">👤 ${destacar(r.criadoPor, termo)}</span>
+            <span title="${escaparHtml(r.criadoPor)}">👤 ${destacar(r.criadoPor, r._n.criadoPor, termos)}</span>
             <span>🕐 ${escaparHtml(r.dataCriacao)}${editado ? ' · editado em ' + escaparHtml(r.ultimaAlteracao) : ''}</span>
           </div>
           <div class="card-acoes">
@@ -278,7 +539,8 @@
     $('#qtd-tab').textContent = Estado.registros.filter(r => r.tipo === 'TAB').length;
 
     // Contador de resultados (só aparece quando há filtro/busca ativa).
-    const filtrando = Estado.busca.trim() || Estado.filtroTipo !== 'TODOS' || Estado.filtroCategoria;
+    const filtrando = Estado.busca.trim() || Estado.filtroTipo !== 'TODOS' ||
+                      Estado.filtroCategoria || Estado.filtroSubcategoria;
     $('#sep-resultados').hidden = !filtrando;
     $('#qtd-resultados').hidden = !filtrando;
     if (filtrando) {
@@ -299,7 +561,9 @@
 
     vazio.hidden = true;
     lista.hidden = false;
-    lista.innerHTML = resultados.map(htmlCard).join('');
+
+    const termos = termosBusca();
+    lista.innerHTML = resultados.map(r => htmlCard(r, termos)).join('');
   }
 
   /* ----------------------------------------------------------
@@ -312,6 +576,8 @@
       await navigator.clipboard.writeText(texto);
     } catch (e) {
       // Fallback para navegadores/iframes sem Clipboard API.
+      // CORREÇÃO B-06: execCommand pode lançar em iframes restritos.
+      // Sem o catch, o erro escapava e o usuário não recebia retorno algum.
       const ta = document.createElement('textarea');
       ta.value = texto;
       ta.style.position = 'fixed';
@@ -319,22 +585,56 @@
       document.body.appendChild(ta);
       ta.focus();
       ta.select();
-      try { document.execCommand('copy'); } finally { ta.remove(); }
+      let copiou = false;
+      try { copiou = document.execCommand('copy'); } catch (e2) { copiou = false; } finally { ta.remove(); }
+      if (!copiou) {
+        toast('Não foi possível copiar. Selecione o texto e use Ctrl+C.', 'erro');
+        return;
+      }
     }
     toast('Texto copiado com sucesso.');
   }
 
-  function alternarFavorito(id) {
-    if (Estado.favoritos.has(id)) Estado.favoritos.delete(id);
-    else Estado.favoritos.add(id);
-    salvarFavoritos();
-    renderizar();
+  /** Localiza o elemento de um card já renderizado. */
+  function cardDe(id) {
+    return $('#lista-cards .card[data-id="' + id + '"]');
   }
 
+  /**
+   * OTIMIZAÇÃO P-03 — atualização cirúrgica.
+   *
+   * Favoritar recriava os 400 cards da lista só para trocar uma estrela.
+   * Agora só o card afetado é tocado. Efeito colateral desejável: o card
+   * não "salta" de posição sob o cursor — a reordenação por favoritos
+   * passa a valer na próxima busca, filtro ou recarga.
+   */
+  function alternarFavorito(id) {
+    const favorito = !Estado.favoritos.has(id);
+    if (favorito) Estado.favoritos.add(id);
+    else Estado.favoritos.delete(id);
+    salvarFavoritos();
+
+    const card = cardDe(id);
+    if (!card) { renderizar(); return; }
+
+    const botao = card.querySelector('[data-acao="favoritar"]');
+    botao.classList.toggle('ativo', favorito);
+    botao.textContent = favorito ? '⭐' : '☆';
+    botao.title = favorito ? 'Remover dos favoritos' : 'Favoritar';
+  }
+
+  /** Expande/recolhe apenas o card alvo, sem redesenhar a lista. */
   function alternarExpandido(id) {
-    if (Estado.expandidos.has(id)) Estado.expandidos.delete(id);
-    else Estado.expandidos.add(id);
-    renderizar();
+    const expandido = !Estado.expandidos.has(id);
+    if (expandido) Estado.expandidos.add(id);
+    else Estado.expandidos.delete(id);
+
+    const card = cardDe(id);
+    if (!card) { renderizar(); return; }
+
+    card.querySelector('.card-texto').classList.toggle('recolhido', !expandido);
+    const botao = card.querySelector('[data-acao="expandir"]');
+    if (botao) botao.textContent = expandido ? 'Ver menos ▲' : 'Ver mais ▼';
   }
 
   function imprimirRegistro(r) {
@@ -397,9 +697,12 @@
     $('#seg-tipo').classList.toggle('bloqueado', !!registro);
 
     $('#campo-categoria').value = registro ? registro.categoria : '';
+    $('#campo-subcategoria').value = registro ? registro.subcategoria : '';
     $('#campo-descricao').value = registro ? registro.descricao : '';
     $('#campo-texto').value = registro ? registro.texto : '';
     atualizarContagemTexto();
+    atualizarSugestoesSubcategoria();
+    atualizarPreviaCaminho();
     limparInvalidos();
 
     $('#view-home').hidden = true;
@@ -413,6 +716,25 @@
     $$('#seg-tipo .seg-opcao').forEach(btn => {
       btn.classList.toggle('ativo', btn.dataset.tipo === tipo);
     });
+  }
+
+  /** Mostra ao vivo o caminho que está sendo montado no formulário. */
+  function atualizarPreviaCaminho() {
+    const cat = $('#campo-categoria').value.trim();
+    const sub = $('#campo-subcategoria').value.trim();
+    const desc = $('#campo-descricao').value.trim();
+    const alvo = $('#previa-caminho');
+
+    if (!cat && !sub && !desc) {
+      alvo.hidden = true;
+      return;
+    }
+
+    const partes = [cat || 'Categoria', sub, desc].filter(Boolean);
+    alvo.innerHTML = partes
+      .map(parte => escaparHtml(parte))
+      .join('<span class="caminho-sep">›</span>');
+    alvo.hidden = false;
   }
 
   function atualizarContagemTexto() {
@@ -433,6 +755,7 @@
     const dados = {
       tipo: Estado.tipoForm,
       categoria: $('#campo-categoria').value.trim(),
+      subcategoria: $('#campo-subcategoria').value.trim(),
       descricao: $('#campo-descricao').value.trim(),
       texto: $('#campo-texto').value.trim()
     };
@@ -465,10 +788,10 @@
       if (ehEdicao) {
         resposta = await servidor('updateRecord', Object.assign({ id: Estado.editandoId }, dados));
         const indice = Estado.registros.findIndex(r => r.id === resposta.registro.id);
-        if (indice !== -1) Estado.registros[indice] = resposta.registro;
+        if (indice !== -1) Estado.registros[indice] = indexar(resposta.registro);
       } else {
         resposta = await servidor('createRecord', dados);
-        Estado.registros.push(resposta.registro);
+        Estado.registros.push(indexar(resposta.registro));
       }
 
       atualizarCategorias();
@@ -500,12 +823,47 @@
 
     // Pesquisa em tempo real (debounce curto para fluidez).
     let temporizador = null;
-    $('#campo-pesquisa').addEventListener('input', (e) => {
+    const campoPesquisa = $('#campo-pesquisa');
+
+    campoPesquisa.addEventListener('input', (e) => {
+      fecharHistorico();
       clearTimeout(temporizador);
       temporizador = setTimeout(() => {
         Estado.busca = e.target.value;
         renderizar();
       }, 120);
+    });
+
+    // Histórico: abre ao focar o campo vazio.
+    campoPesquisa.addEventListener('focus', () => {
+      if (!campoPesquisa.value.trim()) abrirHistorico();
+    });
+
+    campoPesquisa.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        registrarBusca(campoPesquisa.value);
+        fecharHistorico();
+      }
+    });
+
+    // mousedown (e não click) para agir antes do blur fechar a caixa.
+    $('#historico-busca').addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      const item = e.target.closest('[data-termo]');
+      if (item) {
+        campoPesquisa.value = item.dataset.termo;
+        Estado.busca = item.dataset.termo;
+        registrarBusca(item.dataset.termo);
+        fecharHistorico();
+        renderizar();
+        campoPesquisa.focus();
+        return;
+      }
+      if (e.target.closest('[data-acao="limpar"]')) limparHistorico();
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.busca-wrapper')) fecharHistorico();
     });
 
     // Filtros rápidos por tipo.
@@ -518,11 +876,27 @@
       });
     });
 
-    // Filtro por categoria.
+    // Filtro por categoria — reinicia o nível seguinte da hierarquia.
     $('#filtro-categoria').addEventListener('change', (e) => {
       Estado.filtroCategoria = e.target.value;
+      Estado.filtroSubcategoria = '';
+      atualizarSubcategorias();
       renderizar();
     });
+
+    // Filtro por subcategoria.
+    $('#filtro-subcategoria').addEventListener('change', (e) => {
+      Estado.filtroSubcategoria = e.target.value;
+      renderizar();
+    });
+
+    // Formulário: categoria digitada refiltra as sugestões de subcategoria.
+    $('#campo-categoria').addEventListener('input', () => {
+      atualizarSugestoesSubcategoria();
+      atualizarPreviaCaminho();
+    });
+    $('#campo-subcategoria').addEventListener('input', atualizarPreviaCaminho);
+    $('#campo-descricao').addEventListener('input', atualizarPreviaCaminho);
 
     // Tipo no formulário (bloqueado durante edição).
     $$('#seg-tipo .seg-opcao').forEach(btn => {
@@ -545,7 +919,10 @@
       if (!registro) return;
 
       switch (botao.dataset.acao) {
-        case 'copiar':    copiarTexto(registro); break;
+        case 'copiar':
+          copiarTexto(registro);
+          registrarBusca(Estado.busca); // busca que levou a um uso real
+          break;
         case 'favoritar': alternarFavorito(registro.id); break;
         case 'expandir':  alternarExpandido(registro.id); break;
         case 'editar':    abrirCadastro(registro); break;
@@ -578,7 +955,8 @@
         abrirCadastro(null);
       }
       if (e.key === 'Escape') {
-        if (!$('#modal-confirmar').hidden) fecharModal();
+        if (!$('#historico-busca').hidden) fecharHistorico();
+        else if (!$('#modal-confirmar').hidden) fecharModal();
         else if (!$('#view-cadastro').hidden) mostrarHome();
       }
     });

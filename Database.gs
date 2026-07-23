@@ -14,14 +14,24 @@
 /** Chave em ScriptProperties onde fica o ID da planilha-banco. */
 var DB_PROP_KEY = 'BC_SPREADSHEET_ID';
 
+/**
+ * Chave de backup. Sempre que a base é trocada, o ID anterior é
+ * preservado aqui — permite recuperar manualmente a planilha antiga.
+ */
+var DB_PROP_BACKUP = 'BC_SPREADSHEET_ID_ANTERIOR';
+
 /** Nome do arquivo criado no Drive na primeira execução. */
 var DB_NOME_ARQUIVO = 'Base de Conhecimento — Dados';
 
 /** Cabeçalho padrão das duas abas. */
 var DB_CABECALHO = [
   'ID', 'Categoria', 'Descrição/Cenário', 'Texto',
-  'Criado por', 'Data criação', 'Última alteração'
+  'Criado por', 'Data criação', 'Última alteração',
+  'Subcategoria'   // coluna H — acrescentada na Fase 2
 ];
+
+/** Posição (1-indexada) da coluna Subcategoria. */
+var DB_COL_SUBCATEGORIA = 8;
 
 /** Configuração das abas por tipo de registro. */
 var DB_ABAS = {
@@ -34,57 +44,167 @@ var DB_ABAS = {
  * ---------------------------------------------------------- */
 
 /**
- * Obtém a planilha-banco. Cria automaticamente caso não exista
- * ou caso o arquivo salvo tenha sido excluído.
+ * Obtém a planilha-banco.
+ *
+ * REGRA DE SEGURANÇA (correção A-01):
+ * a base só é criada automaticamente quando NÃO existe nenhum ID
+ * registrado (primeira execução). Se já existe um ID e a abertura
+ * falha, o erro é propagado — nunca se cria uma planilha nova por
+ * cima, pois a falha pode ser transitória (quota do Drive,
+ * instabilidade, permissão temporária) e isso faria o sistema
+ * abandonar silenciosamente a base de produção.
+ *
  * @returns {Spreadsheet}
  */
 function obterPlanilha_() {
   var props = PropertiesService.getScriptProperties();
   var id = props.getProperty(DB_PROP_KEY);
 
-  if (id) {
+  // Primeira execução: não há base registrada, criar é seguro.
+  if (!id) return criarBase_(props);
+
+  try {
+    return SpreadsheetApp.openById(id);
+  } catch (e1) {
+    // Segunda tentativa: cobre falhas transitórias do Drive.
+    Utilities.sleep(700);
     try {
       return SpreadsheetApp.openById(id);
-    } catch (e) {
-      // Arquivo foi excluído — recria abaixo.
+    } catch (e2) {
+      throw new Error(
+        'Não foi possível abrir a planilha de dados (ID: ' + id + '). ' +
+        'A base NÃO foi recriada, para não perder o acesso aos registros existentes. ' +
+        'Verifique no Google Drive se o arquivo existe e se a conta tem permissão de acesso. ' +
+        'Caso a planilha tenha sido realmente excluída, execute manualmente a função ' +
+        'recriarBaseDeDados() no editor do Apps Script. ' +
+        'Detalhe técnico: ' + e2.message
+      );
     }
   }
+}
 
+/**
+ * Cria uma nova planilha-banco e registra seu ID.
+ * O ID anterior (se houver) é preservado em DB_PROP_BACKUP.
+ * @param {Properties} props - ScriptProperties.
+ * @returns {Spreadsheet}
+ */
+function criarBase_(props) {
+  var anterior = props.getProperty(DB_PROP_KEY);
   var ss = SpreadsheetApp.create(DB_NOME_ARQUIVO);
+
+  if (anterior) props.setProperty(DB_PROP_BACKUP, anterior);
   props.setProperty(DB_PROP_KEY, ss.getId());
-  configurarAbas_(ss);
+
+  prepararPlanilhaNova_(ss);
   return ss;
 }
 
 /**
- * Garante que as duas abas existam com cabeçalho formatado.
- * Remove a "Página1" padrão criada pelo Sheets.
+ * Função administrativa. Executar MANUALMENTE no editor do Apps Script
+ * apenas quando a planilha original tiver sido realmente excluída.
+ * O ID antigo fica guardado em DB_PROP_BACKUP.
+ * @returns {string} URL da nova planilha.
+ */
+function recriarBaseDeDados() {
+  var props = PropertiesService.getScriptProperties();
+  var anterior = props.getProperty(DB_PROP_KEY);
+  var ss = criarBase_(props);
+
+  Logger.log('Nova base criada: ' + ss.getUrl());
+  if (anterior) {
+    Logger.log('ID anterior preservado em ' + DB_PROP_BACKUP + ': ' + anterior);
+  }
+  return ss.getUrl();
+}
+
+/**
+ * Configuração inicial de uma planilha recém-criada.
+ * Só é chamada na criação — nunca sobre uma base existente.
  * @param {Spreadsheet} ss
  */
-function configurarAbas_(ss) {
+function prepararPlanilhaNova_(ss) {
   var chaves = ['FAQ', 'TAB'];
-
   for (var i = 0; i < chaves.length; i++) {
     var cfg = DB_ABAS[chaves[i]];
-    var aba = ss.getSheetByName(cfg.nome);
-
-    if (!aba) aba = ss.insertSheet(cfg.nome);
-
-    var cabecalho = aba.getRange(1, 1, 1, DB_CABECALHO.length);
-    cabecalho.setValues([DB_CABECALHO])
-      .setFontWeight('bold')
-      .setBackground('#0047BB')
-      .setFontColor('#FFFFFF');
-    aba.setFrozenRows(1);
-
-    // Colunas de data como texto simples: evita conversão automática
-    // e deslocamento de fuso ao reler os valores.
-    aba.getRange('F:G').setNumberFormat('@');
+    var aba = ss.getSheetByName(cfg.nome) || ss.insertSheet(cfg.nome);
+    escreverCabecalho_(aba);
   }
 
-  // Remove a aba padrão vazia, se existir.
+  // Remove a aba padrão vazia criada pelo Sheets.
   var padrao = ss.getSheetByName('Página1') || ss.getSheetByName('Sheet1');
   if (padrao && ss.getSheets().length > 2) ss.deleteSheet(padrao);
+}
+
+/**
+ * Escreve e formata a linha de cabeçalho de uma aba.
+ *
+ * CORREÇÃO A-02: nunca sobrescreve o cabeçalho de uma aba que já
+ * contém dados. Antes, qualquer chamada reescrevia o cabeçalho das
+ * duas abas, revertendo ajustes feitos na planilha de produção.
+ *
+ * @param {Sheet} aba
+ */
+function escreverCabecalho_(aba) {
+  if (aba.getLastRow() > 0) return; // aba já em uso — não tocar
+
+  aba.getRange(1, 1, 1, DB_CABECALHO.length)
+    .setValues([DB_CABECALHO])
+    .setFontWeight('bold')
+    .setBackground('#0047BB')
+    .setFontColor('#FFFFFF');
+  aba.setFrozenRows(1);
+
+  // Colunas de data como texto simples: evita conversão automática
+  // e deslocamento de fuso ao reler os valores.
+  aba.getRange('F:G').setNumberFormat('@');
+}
+
+/**
+ * Garante que a coluna Subcategoria (H) exista, de forma ADITIVA.
+ *
+ * Só escreve em H1 quando a célula está vazia — nenhuma coluna
+ * existente é renomeada, movida ou redimensionada, e nenhuma linha
+ * de dados é tocada. Bases anteriores à Fase 2 continuam funcionando
+ * com a subcategoria em branco: não há migração obrigatória.
+ *
+ * @param {Sheet} aba
+ */
+function garantirColunaSubcategoria_(aba) {
+  // Planilha estreita (colunas removidas manualmente): acrescenta ao final.
+  var maxColunas = aba.getMaxColumns();
+  if (maxColunas < DB_COL_SUBCATEGORIA) {
+    aba.insertColumnsAfter(maxColunas, DB_COL_SUBCATEGORIA - maxColunas);
+  }
+
+  var celula = aba.getRange(1, DB_COL_SUBCATEGORIA);
+  if (String(celula.getValue()).trim() !== '') return; // já existe
+
+  celula.setValue(DB_CABECALHO[DB_COL_SUBCATEGORIA - 1])
+    .setFontWeight('bold')
+    .setBackground('#0047BB')
+    .setFontColor('#FFFFFF');
+}
+
+/**
+ * Garante que a aba de um tipo exista, sem alterar abas já em uso.
+ * @param {Spreadsheet} ss
+ * @param {string} chave - "FAQ" ou "TAB".
+ * @returns {Sheet}
+ */
+function garantirAba_(ss, chave) {
+  var cfg = DB_ABAS[chave];
+  var aba = ss.getSheetByName(cfg.nome);
+
+  if (!aba) {
+    aba = ss.insertSheet(cfg.nome);
+    escreverCabecalho_(aba);
+  } else {
+    escreverCabecalho_(aba); // no-op se a aba já tiver conteúdo
+  }
+
+  garantirColunaSubcategoria_(aba);
+  return aba;
 }
 
 /**
@@ -97,12 +217,7 @@ function abaPorTipo_(tipo) {
   if (!cfg) throw new Error('Tipo de registro inválido: ' + tipo);
 
   var ss = obterPlanilha_();
-  var aba = ss.getSheetByName(cfg.nome);
-  if (!aba) {
-    configurarAbas_(ss);
-    aba = ss.getSheetByName(cfg.nome);
-  }
-  return aba;
+  return garantirAba_(ss, tipo);
 }
 
 /**
@@ -133,6 +248,8 @@ function linhaParaRegistro_(linha, tipo) {
     id: String(linha[0]),
     tipo: tipo,
     categoria: String(linha[1] || ''),
+    // linha[7] pode não existir em bases criadas antes da Fase 2.
+    subcategoria: String(linha[7] || ''),
     descricao: String(linha[2] || ''),
     texto: String(linha[3] || ''),
     criadoPor: String(linha[4] || ''),
@@ -178,7 +295,9 @@ function getAllRecords() {
     var ultimaLinha = aba.getLastRow();
     if (ultimaLinha < 2) continue;
 
-    var valores = aba.getRange(2, 1, ultimaLinha - 1, DB_CABECALHO.length).getValues();
+    // Nunca pedir mais colunas do que a aba possui (base antiga/estreita).
+    var colunas = Math.min(DB_CABECALHO.length, aba.getMaxColumns());
+    var valores = aba.getRange(2, 1, ultimaLinha - 1, colunas).getValues();
     for (var i = 0; i < valores.length; i++) {
       if (String(valores[i][0])) {
         registros.push(linhaParaRegistro_(valores[i], tipo));
@@ -191,7 +310,7 @@ function getAllRecords() {
 
 /**
  * Cria um novo registro (FAQ ou Tabulação).
- * @param {Object} dados - {tipo, categoria, descricao, texto}
+ * @param {Object} dados - {tipo, categoria, subcategoria, descricao, texto}
  * @returns {Object} { ok, registro }
  */
 function createRecord(dados) {
@@ -205,6 +324,7 @@ function createRecord(dados) {
       id: proximoId_(aba, DB_ABAS[limpo.tipo].prefixo),
       tipo: limpo.tipo,
       categoria: limpo.categoria,
+      subcategoria: limpo.subcategoria,
       descricao: limpo.descricao,
       texto: limpo.texto,
       criadoPor: obterUsuario_(),
@@ -214,7 +334,8 @@ function createRecord(dados) {
 
     aba.appendRow([
       registro.id, registro.categoria, registro.descricao, registro.texto,
-      registro.criadoPor, registro.dataCriacao, registro.ultimaAlteracao
+      registro.criadoPor, registro.dataCriacao, registro.ultimaAlteracao,
+      registro.subcategoria
     ]);
 
     return { ok: true, registro: registro };
@@ -224,7 +345,7 @@ function createRecord(dados) {
 /**
  * Atualiza um registro existente (categoria, descrição e texto).
  * O tipo e o ID não mudam; "Última alteração" é atualizada.
- * @param {Object} dados - {id, tipo, categoria, descricao, texto}
+ * @param {Object} dados - {id, tipo, categoria, subcategoria, descricao, texto}
  * @returns {Object} { ok, registro }
  */
 function updateRecord(dados) {
@@ -242,8 +363,10 @@ function updateRecord(dados) {
     var agora = agoraFormatado_();
     aba.getRange(linha, 2, 1, 3).setValues([[limpo.categoria, limpo.descricao, limpo.texto]]);
     aba.getRange(linha, 7).setValue(agora);
+    aba.getRange(linha, DB_COL_SUBCATEGORIA).setValue(limpo.subcategoria);
 
-    var valores = aba.getRange(linha, 1, 1, DB_CABECALHO.length).getValues()[0];
+    var colunas = Math.min(DB_CABECALHO.length, aba.getMaxColumns());
+    var valores = aba.getRange(linha, 1, 1, colunas).getValues()[0];
     return { ok: true, registro: linhaParaRegistro_(valores, limpo.tipo) };
   });
 }
