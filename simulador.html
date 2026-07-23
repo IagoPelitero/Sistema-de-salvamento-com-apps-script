@@ -1,0 +1,2491 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  
+  <meta charset="UTF-8">
+  <title>Base de Conhecimento</title>
+  <style>
+/* ============================================================
+   BASE DE CONHECIMENTO — Style.html
+   Fase 1: fundação visual (design tokens + escala de espaçamento)
+
+   ARQUITETURA DE TOKENS
+   1. Escalas globais  → espaçamento, raio, tipografia, movimento
+   2. Primitivos       → paleta bruta, definida por tema
+   3. Semânticos       → papéis de uso (--superficie, --texto, --borda)
+
+   Regra: componentes usam APENAS tokens semânticos e escalas.
+   Criar um tema novo = redefinir os primitivos, nada mais.
+
+   Nenhum nome de classe foi alterado nesta fase — apenas CSS.
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   1. ESCALAS GLOBAIS (independentes de tema)
+   ---------------------------------------------------------- */
+:root {
+  /* Espaçamento — base 4px. Todo padding/gap/margin sai daqui. */
+  --e-1: 4px;
+  --e-2: 8px;
+  --e-3: 12px;
+  --e-4: 16px;
+  --e-5: 20px;
+  --e-6: 24px;
+  --e-8: 32px;
+  --e-10: 40px;
+  --e-12: 48px;
+
+  /* Raio */
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 16px;
+  --r-full: 999px;
+
+  /* Tipografia */
+  --fonte: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --t-2xs: 11px;
+  --t-xs: 12px;
+  --t-sm: 13px;
+  --t-base: 14px;
+  --t-md: 15px;
+  --t-lg: 17px;
+  --t-xl: 20px;
+
+  --lh-tight: 1.3;
+  --lh-normal: 1.5;
+  --lh-leitura: 1.6;
+
+  --ls-titulo: -0.011em;   /* títulos: leve aperto = ar mais profissional */
+  --ls-rotulo: 0.04em;     /* labels em caixa alta: respiro */
+
+  /* Movimento */
+  --dur-rapida: 110ms;
+  --dur-base: 170ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Layout */
+  --largura-max: 1180px;
+  --altura-topbar: 56px;
+}
+
+/* ------------------------------------------------------------
+   2. PRIMITIVOS POR TEMA + 3. MAPEAMENTO SEMÂNTICO
+   ---------------------------------------------------------- */
+
+/* ---------- Tema PortoBank (padrão) ---------- */
+:root,
+html[data-theme="portobank"] {
+  --p-acento: #0047BB;
+  --p-acento-hover: #003A9B;
+  --p-acento-suave: #EAF0FC;
+  --p-acento-linha: #C3D6F7;
+
+  --p-cinza-0: #FFFFFF;
+  --p-cinza-50: #F6F8FB;
+  --p-cinza-100: #EDF1F7;
+  --p-cinza-200: #E1E7F0;
+  --p-cinza-400: #8A97AC;
+  --p-cinza-600: #5A6779;
+  --p-cinza-900: #161D29;
+
+  --p-faq: #0047BB;
+  --p-faq-suave: #EAF0FC;
+  --p-tab: #0B7A55;
+  --p-tab-suave: #E4F4EE;
+  --p-perigo: #C0332C;
+  --p-perigo-suave: #FBEBEA;
+  --p-marca: #FFE9A3;
+
+  --sombra-1: 0 1px 2px rgba(16, 27, 48, .06);
+  --sombra-2: 0 2px 4px rgba(16, 27, 48, .06), 0 8px 20px rgba(16, 27, 48, .07);
+  --sombra-3: 0 12px 40px rgba(16, 27, 48, .18);
+  --overlay: rgba(18, 26, 40, .45);
+}
+
+/* ---------- Tema Rosa ---------- */
+html[data-theme="rosa"] {
+  --p-acento: #C42A63;
+  --p-acento-hover: #A62153;
+  --p-acento-suave: #FCEAF1;
+  --p-acento-linha: #F3C9DA;
+
+  --p-cinza-0: #FFFFFF;
+  --p-cinza-50: #FBF6F8;
+  --p-cinza-100: #F6EDF1;
+  --p-cinza-200: #EEDFE6;
+  --p-cinza-400: #A3808F;
+  --p-cinza-600: #6E5560;
+  --p-cinza-900: #2B1A22;
+
+  --p-faq: #C42A63;
+  --p-faq-suave: #FCEAF1;
+  --p-tab: #0B7A55;
+  --p-tab-suave: #E4F4EE;
+  --p-perigo: #C0332C;
+  --p-perigo-suave: #FBEBEA;
+  --p-marca: #FFDCA8;
+
+  --sombra-1: 0 1px 2px rgba(70, 25, 45, .06);
+  --sombra-2: 0 2px 4px rgba(70, 25, 45, .06), 0 8px 20px rgba(70, 25, 45, .07);
+  --sombra-3: 0 12px 40px rgba(70, 25, 45, .18);
+  --overlay: rgba(50, 22, 34, .45);
+}
+
+/* ---------- Tema Dark ---------- */
+html[data-theme="dark"] {
+  --p-acento: #5B95FF;
+  --p-acento-hover: #7EAEFF;
+  --p-acento-suave: #16243C;
+  --p-acento-linha: #2C4470;
+
+  --p-cinza-0: #161C25;      /* superfície */
+  --p-cinza-50: #0C1015;     /* fundo da página */
+  --p-cinza-100: #1D2531;    /* superfície elevada */
+  --p-cinza-200: #2B3545;    /* bordas */
+  --p-cinza-400: #7C8AA0;
+  --p-cinza-600: #9DAAC0;
+  --p-cinza-900: #EAEFF7;
+
+  --p-faq: #5B95FF;
+  --p-faq-suave: #16243C;
+  --p-tab: #2FBE89;
+  --p-tab-suave: #102E23;
+  --p-perigo: #EE6A62;
+  --p-perigo-suave: #2E1A1A;
+  --p-marca: #6A5316;
+
+  --sombra-1: 0 1px 2px rgba(0, 0, 0, .5);
+  --sombra-2: 0 2px 4px rgba(0, 0, 0, .45), 0 8px 22px rgba(0, 0, 0, .4);
+  --sombra-3: 0 16px 48px rgba(0, 0, 0, .65);
+  --overlay: rgba(5, 8, 12, .68);
+}
+
+/* ---------- Camada semântica (comum a todos os temas) ---------- */
+:root,
+html[data-theme] {
+  --fundo: var(--p-cinza-50);
+  --superficie: var(--p-cinza-0);
+  --superficie-2: var(--p-cinza-100);
+  --superficie-hover: var(--p-cinza-100);
+
+  --texto: var(--p-cinza-900);
+  --texto-suave: var(--p-cinza-600);
+  --texto-sutil: var(--p-cinza-400);
+
+  --borda: var(--p-cinza-200);
+  --borda-forte: var(--p-cinza-400);
+
+  --primaria: var(--p-acento);
+  --primaria-forte: var(--p-acento-hover);
+  --primaria-suave: var(--p-acento-suave);
+  --primaria-linha: var(--p-acento-linha);
+
+  --faq: var(--p-faq);
+  --faq-suave: var(--p-faq-suave);
+  --tab-cor: var(--p-tab);
+  --tab-suave: var(--p-tab-suave);
+  --perigo: var(--p-perigo);
+  --perigo-suave: var(--p-perigo-suave);
+  --marca-fundo: var(--p-marca);
+}
+
+/* ------------------------------------------------------------
+   RESET E BASE
+   ---------------------------------------------------------- */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+/*
+ * O atributo hidden é aplicado pelo navegador como display:none via
+ * folha de estilo do agente — perde para qualquer regra do autor
+ * (ex.: .modal-overlay { display: grid }). Sem esta linha, o modal,
+ * o skeleton e o estado vazio nunca desaparecem.
+ */
+[hidden] { display: none !important; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  font-family: var(--fonte);
+  font-size: var(--t-base);
+  line-height: var(--lh-normal);
+  background: var(--fundo);
+  color: var(--texto);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  transition: background var(--dur-base) var(--ease), color var(--dur-base) var(--ease);
+}
+
+button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+input, select, textarea { font: inherit; color: inherit; }
+
+mark {
+  background: var(--marca-fundo);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 2px;
+  font-weight: 600;
+}
+
+/* Foco visível e consistente em todo o sistema. */
+:focus-visible {
+  outline: 2px solid var(--primaria);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+/* ------------------------------------------------------------
+   TOPBAR
+   ---------------------------------------------------------- */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-4);
+  height: var(--altura-topbar);
+  padding: 0 var(--e-5);
+  background: var(--superficie);
+  border-bottom: 1px solid var(--borda);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--e-3);
+  border-radius: var(--r-md);
+  padding: var(--e-1);
+  margin-left: calc(var(--e-1) * -1);
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-md);
+  background: var(--primaria);
+  color: #fff;
+  font-size: var(--t-2xs);
+  font-weight: 800;
+  letter-spacing: var(--ls-rotulo);
+}
+
+.brand-nome {
+  font-size: var(--t-md);
+  font-weight: 650;
+  letter-spacing: var(--ls-titulo);
+}
+
+.topbar-acoes { display: flex; align-items: center; gap: var(--e-1); }
+
+/* ------------------------------------------------------------
+   BOTÕES
+   ---------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e-2);
+  height: 34px;
+  padding: 0 var(--e-3);
+  border-radius: var(--r-md);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background var(--dur-rapida) var(--ease),
+              border-color var(--dur-rapida) var(--ease),
+              color var(--dur-rapida) var(--ease);
+}
+
+.btn:active { transform: translateY(1px); }
+
+.btn-primario {
+  background: var(--primaria);
+  color: #fff;
+  padding: 0 var(--e-4);
+}
+.btn-primario:hover { background: var(--primaria-forte); }
+.btn-primario:disabled { opacity: .55; cursor: progress; }
+
+.btn-ghost { color: var(--texto-suave); }
+.btn-ghost:hover { background: var(--superficie-hover); color: var(--texto); }
+
+.btn-perigo { background: var(--perigo); color: #fff; padding: 0 var(--e-4); }
+.btn-perigo:hover { filter: brightness(1.07); }
+
+/* ------------------------------------------------------------
+   LAYOUT
+   ---------------------------------------------------------- */
+.conteudo {
+  max-width: var(--largura-max);
+  margin: 0 auto;
+  padding: var(--e-6) var(--e-5) var(--e-12);
+}
+
+/* ------------------------------------------------------------
+   PAINEL DE BUSCA — elemento principal do sistema
+   O trabalho do atendente começa aqui, então a busca recebe
+   mais peso visual do que qualquer outro controle da tela.
+   ---------------------------------------------------------- */
+.painel-busca {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-4);
+  margin-bottom: var(--e-6);
+}
+
+.campo-busca {
+  display: flex;
+  align-items: center;
+  gap: var(--e-3);
+  height: 48px;
+  padding: 0 var(--e-4);
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sombra-1);
+  transition: border-color var(--dur-rapida) var(--ease),
+              box-shadow var(--dur-rapida) var(--ease);
+}
+
+.campo-busca:focus-within {
+  border-color: var(--primaria);
+  box-shadow: 0 0 0 3px var(--primaria-suave);
+}
+
+.campo-busca input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: var(--t-md);
+}
+
+.campo-busca input::placeholder { color: var(--texto-sutil); }
+.campo-busca input::-webkit-search-cancel-button { cursor: pointer; }
+
+.icone-busca { font-size: var(--t-md); opacity: .55; line-height: 1; }
+
+.campo-busca kbd {
+  flex-shrink: 0;
+  font-family: var(--fonte);
+  font-size: var(--t-2xs);
+  font-weight: 600;
+  color: var(--texto-sutil);
+  background: var(--fundo);
+  border: 1px solid var(--borda);
+  border-radius: var(--r-sm);
+  padding: 3px var(--e-2);
+}
+
+
+/* ------------------------------------------------------------
+   HISTÓRICO DE PESQUISA (Fase 3)
+   ---------------------------------------------------------- */
+.busca-wrapper { position: relative; }
+
+.historico {
+  position: absolute;
+  top: calc(100% + var(--e-1));
+  left: 0;
+  right: 0;
+  z-index: 60;
+  padding: var(--e-2);
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sombra-2);
+  animation: surgir var(--dur-rapida) var(--ease) both;
+}
+
+.historico-titulo {
+  padding: var(--e-2) var(--e-3);
+  font-size: var(--t-2xs);
+  font-weight: 700;
+  letter-spacing: var(--ls-rotulo);
+  text-transform: uppercase;
+  color: var(--texto-sutil);
+}
+
+.historico-item {
+  display: block;
+  width: 100%;
+  padding: var(--e-2) var(--e-3);
+  border-radius: var(--r-sm);
+  text-align: left;
+  font-size: var(--t-sm);
+  color: var(--texto);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background var(--dur-rapida) var(--ease);
+}
+
+.historico-item:hover { background: var(--superficie-2); }
+
+.historico-limpar {
+  display: block;
+  width: 100%;
+  margin-top: var(--e-1);
+  padding: var(--e-2) var(--e-3);
+  border-top: 1px solid var(--borda);
+  border-radius: 0 0 var(--r-sm) var(--r-sm);
+  text-align: left;
+  font-size: var(--t-xs);
+  font-weight: 600;
+  color: var(--texto-sutil);
+  transition: color var(--dur-rapida) var(--ease);
+}
+
+.historico-limpar:hover { color: var(--perigo); }
+
+/* ------------------------------------------------------------
+   FILTROS
+   ---------------------------------------------------------- */
+.linha-filtros {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-3);
+  flex-wrap: wrap;
+}
+
+.chips {
+  display: inline-flex;
+  gap: var(--e-1);
+  padding: var(--e-1);
+  background: var(--superficie-2);
+  border-radius: var(--r-md);
+}
+
+.chip {
+  height: 30px;
+  padding: 0 var(--e-4);
+  border-radius: var(--r-sm);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--texto-suave);
+  transition: background var(--dur-rapida) var(--ease),
+              color var(--dur-rapida) var(--ease);
+}
+
+.chip:hover { color: var(--texto); }
+
+.chip.ativo {
+  background: var(--superficie);
+  color: var(--texto);
+  box-shadow: var(--sombra-1);
+}
+
+/* A cor só aparece no estado ativo: sinaliza o filtro sem poluir. */
+.chip-faq.ativo { color: var(--faq); }
+.chip-tab.ativo { color: var(--tab-cor); }
+
+#filtro-categoria {
+  height: 32px;
+  max-width: 260px;
+  padding: 0 var(--e-3);
+  background: var(--superficie);
+  color: var(--texto);
+  border: 1px solid var(--borda);
+  border-radius: var(--r-md);
+  font-size: var(--t-sm);
+  cursor: pointer;
+  transition: border-color var(--dur-rapida) var(--ease);
+}
+
+#filtro-categoria:hover { border-color: var(--borda-forte); }
+
+.contadores {
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+  font-size: var(--t-xs);
+  color: var(--texto-sutil);
+  font-variant-numeric: tabular-nums;
+}
+
+.contador strong { color: var(--texto-suave); font-weight: 650; }
+.contador-faq strong { color: var(--faq); }
+.contador-tab strong { color: var(--tab-cor); }
+.separador { opacity: .45; }
+
+/* ------------------------------------------------------------
+   CARDS
+   Superfícies quase planas com borda de 1px: com dezenas de
+   cards na tela, sombra em cada um vira ruído. A elevação
+   aparece só no hover, indicando o que está sob o cursor.
+   ---------------------------------------------------------- */
+.lista-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: var(--e-4);
+  align-items: start;
+}
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-3);
+  padding: var(--e-5);
+  padding-left: calc(var(--e-5) - 3px);
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-left: 3px solid var(--borda);
+  border-radius: var(--r-lg);
+  animation: surgir var(--dur-base) var(--ease) both;
+  transition: border-color var(--dur-rapida) var(--ease),
+              box-shadow var(--dur-rapida) var(--ease),
+              transform var(--dur-rapida) var(--ease);
+}
+
+.card:hover {
+  box-shadow: var(--sombra-2);
+  transform: translateY(-1px);
+}
+
+.card.tipo-FAQ { border-left-color: var(--faq); }
+.card.tipo-TAB { border-left-color: var(--tab-cor); }
+
+@keyframes surgir {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.card-topo {
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+  min-height: 20px;
+}
+
+.badge {
+  flex-shrink: 0;
+  padding: 2px var(--e-2);
+  border-radius: var(--r-sm);
+  font-size: var(--t-2xs);
+  font-weight: 700;
+  letter-spacing: var(--ls-rotulo);
+  text-transform: uppercase;
+}
+
+.badge-FAQ { background: var(--faq-suave); color: var(--faq); }
+.badge-TAB { background: var(--tab-suave); color: var(--tab-cor); }
+
+.card-categoria {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--t-xs);
+  font-weight: 600;
+  color: var(--texto-sutil);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-favorito {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin: -4px -4px -4px 0;
+  border-radius: var(--r-sm);
+  font-size: var(--t-base);
+  line-height: 1;
+  opacity: .3;
+  transition: opacity var(--dur-rapida) var(--ease),
+              background var(--dur-rapida) var(--ease);
+}
+
+.card:hover .btn-favorito { opacity: .55; }
+.btn-favorito:hover { opacity: 1; background: var(--superficie-hover); }
+.btn-favorito.ativo,
+.card:hover .btn-favorito.ativo { opacity: 1; }
+
+/* Alvo primário de leitura: é o que o atendente varre com os olhos. */
+.card-descricao {
+  font-size: var(--t-md);
+  font-weight: 650;
+  line-height: var(--lh-tight);
+  letter-spacing: var(--ls-titulo);
+  color: var(--texto);
+}
+
+.card-texto {
+  font-size: var(--t-sm);
+  line-height: var(--lh-leitura);
+  color: var(--texto-suave);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.card-texto.recolhido {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.btn-expandir {
+  align-self: flex-start;
+  margin-top: calc(var(--e-1) * -1);
+  font-size: var(--t-xs);
+  font-weight: 650;
+  color: var(--primaria);
+  border-radius: var(--r-sm);
+}
+
+.btn-expandir:hover { text-decoration: underline; }
+
+.card-rodape {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--e-3);
+  margin-top: auto;
+  padding-top: var(--e-3);
+  border-top: 1px solid var(--borda);
+}
+
+.card-meta {
+  min-width: 0;
+  font-size: var(--t-2xs);
+  line-height: 1.5;
+  color: var(--texto-sutil);
+}
+
+.card-meta span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-acoes {
+  display: flex;
+  align-items: center;
+  gap: var(--e-1);
+  flex-shrink: 0;
+}
+
+.btn-icone {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-sm);
+  font-size: var(--t-sm);
+  opacity: .6;
+  transition: background var(--dur-rapida) var(--ease),
+              opacity var(--dur-rapida) var(--ease);
+}
+
+.btn-icone:hover { background: var(--superficie-hover); opacity: 1; }
+
+/* Copiar é o objetivo final de quase todo atendimento: fica evidente. */
+.btn-copiar {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e-1);
+  height: 30px;
+  padding: 0 var(--e-3);
+  border-radius: var(--r-sm);
+  background: var(--primaria-suave);
+  color: var(--primaria);
+  font-size: var(--t-xs);
+  font-weight: 650;
+  transition: background var(--dur-rapida) var(--ease),
+              color var(--dur-rapida) var(--ease);
+}
+
+.btn-copiar:hover { background: var(--primaria); color: #fff; }
+.btn-copiar:active { transform: translateY(1px); }
+
+
+/* ------------------------------------------------------------
+   HIERARQUIA — Categoria › Subcategoria (Fase 2)
+   ---------------------------------------------------------- */
+.filtros-hierarquia {
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+  min-width: 0;
+}
+
+.hierarquia-seta {
+  color: var(--texto-sutil);
+  font-size: var(--t-base);
+  line-height: 1;
+  user-select: none;
+}
+
+#filtro-subcategoria {
+  height: 32px;
+  max-width: 220px;
+  padding: 0 var(--e-3);
+  background: var(--superficie);
+  color: var(--texto);
+  border: 1px solid var(--borda);
+  border-radius: var(--r-md);
+  font-size: var(--t-sm);
+  cursor: pointer;
+  transition: border-color var(--dur-rapida) var(--ease), opacity var(--dur-rapida) var(--ease);
+}
+
+#filtro-subcategoria:hover:not(:disabled) { border-color: var(--borda-forte); }
+
+/* Desabilitado enquanto nenhuma categoria estiver selecionada:
+   comunica a dependência sem precisar de texto explicativo. */
+#filtro-subcategoria:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+  background: var(--superficie-2);
+}
+
+/* Separador do caminho, usado no card e na prévia do formulário. */
+.caminho-sep {
+  display: inline-block;
+  margin: 0 var(--e-1);
+  color: var(--texto-sutil);
+  font-weight: 400;
+}
+
+/* Dois campos lado a lado no formulário. */
+.grupo-hierarquia {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--e-4);
+}
+
+.rotulo-opcional {
+  margin-left: var(--e-1);
+  padding: 1px var(--e-1);
+  border-radius: var(--r-sm);
+  background: var(--superficie-2);
+  color: var(--texto-sutil);
+  font-size: var(--t-2xs);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.previa-caminho {
+  margin-top: calc(var(--e-3) * -1);
+  padding: var(--e-3) var(--e-4);
+  background: var(--primaria-suave);
+  border-radius: var(--r-md);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--primaria);
+  line-height: var(--lh-normal);
+  word-break: break-word;
+}
+
+.previa-caminho .caminho-sep { color: var(--primaria); opacity: .55; }
+
+/* ------------------------------------------------------------
+   SKELETON
+   ---------------------------------------------------------- */
+.card.skeleton {
+  height: 176px;
+  border-left-color: var(--borda);
+  background: var(--superficie);
+  overflow: hidden;
+}
+
+.card.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg,
+    transparent 30%,
+    var(--superficie-2) 50%,
+    transparent 70%);
+  background-size: 220% 100%;
+  animation: brilho 1.2s infinite linear;
+}
+
+@keyframes brilho {
+  from { background-position: 140% 0; }
+  to { background-position: -60% 0; }
+}
+
+/* ------------------------------------------------------------
+   ESTADO VAZIO
+   ---------------------------------------------------------- */
+.estado-vazio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--e-3);
+  padding: var(--e-12) var(--e-5);
+  text-align: center;
+  color: var(--texto-suave);
+}
+
+.vazio-icone {
+  font-size: 30px;
+  opacity: .5;
+  margin-bottom: var(--e-1);
+}
+
+.estado-vazio h3 {
+  font-size: var(--t-lg);
+  font-weight: 650;
+  letter-spacing: var(--ls-titulo);
+  color: var(--texto);
+}
+
+.estado-vazio p {
+  font-size: var(--t-base);
+  max-width: 380px;
+}
+
+.estado-vazio .btn { margin-top: var(--e-2); }
+
+/* ------------------------------------------------------------
+   FORMULÁRIO
+   ---------------------------------------------------------- */
+.painel-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-5);
+  max-width: 660px;
+  margin: 0 auto;
+  padding: var(--e-8);
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: var(--r-xl);
+  box-shadow: var(--sombra-1);
+  animation: surgir var(--dur-base) var(--ease) both;
+}
+
+.painel-form h2 {
+  font-size: var(--t-xl);
+  font-weight: 650;
+  letter-spacing: var(--ls-titulo);
+}
+
+.form-subtitulo {
+  margin-top: calc(var(--e-4) * -1);
+  font-size: var(--t-sm);
+  color: var(--texto-suave);
+}
+
+.grupo-campo { display: flex; flex-direction: column; gap: var(--e-2); }
+
+.rotulo {
+  font-size: var(--t-xs);
+  font-weight: 650;
+  letter-spacing: var(--ls-rotulo);
+  text-transform: uppercase;
+  color: var(--texto-suave);
+}
+
+.grupo-campo input,
+.grupo-campo textarea {
+  width: 100%;
+  padding: var(--e-3) var(--e-4);
+  background: var(--fundo);
+  border: 1px solid var(--borda);
+  border-radius: var(--r-md);
+  font-size: var(--t-base);
+  line-height: var(--lh-normal);
+  outline: none;
+  resize: vertical;
+  transition: border-color var(--dur-rapida) var(--ease),
+              box-shadow var(--dur-rapida) var(--ease),
+              background var(--dur-rapida) var(--ease);
+}
+
+.grupo-campo input::placeholder,
+.grupo-campo textarea::placeholder { color: var(--texto-sutil); }
+
+.grupo-campo input:hover,
+.grupo-campo textarea:hover { border-color: var(--borda-forte); }
+
+.grupo-campo input:focus,
+.grupo-campo textarea:focus {
+  background: var(--superficie);
+  border-color: var(--primaria);
+  box-shadow: 0 0 0 3px var(--primaria-suave);
+}
+
+.grupo-campo input.invalido,
+.grupo-campo textarea.invalido {
+  border-color: var(--perigo);
+  background: var(--perigo-suave);
+}
+
+.dica-campo {
+  font-size: var(--t-2xs);
+  color: var(--texto-sutil);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.segmentado {
+  display: inline-flex;
+  gap: var(--e-1);
+  width: fit-content;
+  padding: var(--e-1);
+  background: var(--superficie-2);
+  border-radius: var(--r-md);
+}
+
+.seg-opcao {
+  height: 32px;
+  padding: 0 var(--e-5);
+  border-radius: var(--r-sm);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--texto-suave);
+  transition: background var(--dur-rapida) var(--ease),
+              color var(--dur-rapida) var(--ease);
+}
+
+.seg-opcao:hover { color: var(--texto); }
+
+.seg-opcao.ativo {
+  background: var(--superficie);
+  color: var(--faq);
+  box-shadow: var(--sombra-1);
+}
+
+.seg-opcao[data-tipo="TAB"].ativo { color: var(--tab-cor); }
+
+.segmentado.bloqueado { opacity: .65; }
+.segmentado.bloqueado .seg-opcao { cursor: not-allowed; }
+
+.form-acoes {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--e-2);
+  padding-top: var(--e-2);
+  border-top: 1px solid var(--borda);
+}
+
+.form-acoes .btn { height: 38px; }
+
+/* ------------------------------------------------------------
+   TOASTS
+   ---------------------------------------------------------- */
+#toasts {
+  position: fixed;
+  bottom: var(--e-6);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-2);
+  width: max-content;
+  max-width: min(92vw, 420px);
+  pointer-events: none;
+}
+
+.toast {
+  padding: var(--e-3) var(--e-5);
+  background: var(--p-cinza-900);
+  color: var(--p-cinza-0);
+  border-radius: var(--r-md);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  text-align: center;
+  box-shadow: var(--sombra-3);
+  animation: toast-entrar var(--dur-base) var(--ease) both;
+}
+
+.toast.erro { background: var(--perigo); color: #fff; }
+.toast.saindo { animation: toast-sair var(--dur-base) var(--ease) both; }
+
+@keyframes toast-entrar {
+  from { opacity: 0; transform: translateY(10px) scale(.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes toast-sair {
+  from { opacity: 1; }
+  to { opacity: 0; transform: translateY(6px); }
+}
+
+/* ------------------------------------------------------------
+   MODAL
+   ---------------------------------------------------------- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  display: grid;
+  place-items: center;
+  padding: var(--e-5);
+  background: var(--overlay);
+  animation: fade var(--dur-base) var(--ease) both;
+}
+
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+.modal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-3);
+  width: 100%;
+  max-width: 420px;
+  padding: var(--e-6);
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: var(--r-xl);
+  box-shadow: var(--sombra-3);
+  animation: modal-entrar var(--dur-base) var(--ease) both;
+}
+
+@keyframes modal-entrar {
+  from { opacity: 0; transform: translateY(8px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.modal h3 {
+  font-size: var(--t-lg);
+  font-weight: 650;
+  letter-spacing: var(--ls-titulo);
+}
+
+.modal p {
+  font-size: var(--t-base);
+  line-height: var(--lh-leitura);
+  color: var(--texto-suave);
+}
+
+.modal-acoes {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--e-2);
+  margin-top: var(--e-2);
+}
+
+/* ------------------------------------------------------------
+   IMPRESSÃO
+   ---------------------------------------------------------- */
+#print-area { display: none; }
+
+@media print {
+  body > #app,
+  body > #toasts,
+  body > .modal-overlay { display: none !important; }
+
+  #print-area {
+    display: block !important;
+    padding: 24px;
+    color: #000;
+    font-size: 12pt;
+  }
+
+  #print-area h1 { font-size: 16pt; margin-bottom: 4px; }
+  #print-area .print-meta { margin-bottom: 16px; color: #555; font-size: 9pt; }
+  #print-area .print-texto { white-space: pre-wrap; line-height: 1.6; }
+}
+
+/* ------------------------------------------------------------
+   MOVIMENTO REDUZIDO
+   ---------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+/* ------------------------------------------------------------
+   RESPONSIVO
+   Uma única escala de espaçamento serve os quatro tamanhos:
+   os breakpoints ajustam grid e densidade, não regras duplicadas.
+   ---------------------------------------------------------- */
+
+/* Notebook */
+@media (max-width: 1200px) {
+  .conteudo { max-width: 100%; }
+}
+
+/* Tablet */
+@media (max-width: 900px) {
+  .lista-cards { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+  .painel-form { padding: var(--e-6); }
+  #filtro-categoria, #filtro-subcategoria { max-width: 180px; }
+}
+
+/* Celular */
+@media (max-width: 640px) {
+  .so-desktop { display: none; }
+
+  .topbar { padding: 0 var(--e-4); }
+  .brand-nome { font-size: var(--t-base); }
+  .btn { padding: 0 var(--e-3); }
+
+  .conteudo { padding: var(--e-4) var(--e-4) var(--e-10); }
+
+  .campo-busca { height: 44px; }
+  .campo-busca input { font-size: var(--t-base); }
+
+  .linha-filtros { gap: var(--e-2); }
+  .chips { width: 100%; }
+  .chip { flex: 1; padding: 0 var(--e-2); }
+  #filtro-categoria, #filtro-subcategoria { flex: 1; width: auto; max-width: none; min-width: 0; }
+  .filtros-hierarquia { width: 100%; }
+  .grupo-hierarquia { grid-template-columns: 1fr; gap: var(--e-4); }
+
+  .lista-cards { grid-template-columns: 1fr; gap: var(--e-3); }
+  .card { padding: var(--e-4); padding-left: calc(var(--e-4) - 3px); }
+
+  .painel-form { padding: var(--e-5) var(--e-4); border-radius: var(--r-lg); }
+  .form-acoes .btn { flex: 1; justify-content: center; }
+
+  #toasts { bottom: var(--e-4); width: calc(100vw - var(--e-8)); }
+}
+
+/* Telas muito estreitas: as ações do card ganham a linha inteira. */
+@media (max-width: 380px) {
+  .card-rodape { flex-direction: column; align-items: stretch; gap: var(--e-2); }
+  .card-acoes { justify-content: space-between; }
+}
+</style>
+
+</head>
+<body>
+<style>
+  #barra-sim {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap;
+    padding: 8px 16px;
+    background: #1D2531; color: #E9EEF6;
+    font: 600 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  #barra-sim button {
+    padding: 4px 10px; border-radius: 6px; border: 1px solid #3A4658;
+    background: transparent; color: inherit; font: inherit; cursor: pointer;
+  }
+  #barra-sim button:hover { background: #2B3545; }
+  #barra-sim span { opacity: .7; font-weight: 500; }
+</style>
+
+<div id="barra-sim">
+  <strong>Simulador</strong>
+  <span>dados fictícios em memória · nada é gravado</span>
+  <button onclick="location.reload()">Reiniciar dados</button>
+</div>
+
+<script>
+/* ============================================================
+   SERVIDOR SIMULADO
+   Reproduz a API do Database.gs em memória, com a mesma
+   validação, geração de IDs e formato de datas do servidor real.
+   O código do cliente abaixo é EXATAMENTE o de produção.
+   ============================================================ */
+(function () {
+  'use strict';
+
+  const BANCO = {
+    FAQ: [
+      ['FAQ-0001','Cartão de crédito','Qual motivo do cancelamento?','Antes de seguir com o cancelamento, pergunte o motivo e registre a resposta. Isso direciona a oferta de retenção:\n\n1. Anuidade — verificar isenção por gasto mínimo\n2. Falta de uso — oferecer benefícios do programa de pontos\n3. Insatisfação com atendimento — registrar e escalar\n4. Migração para concorrente — consultar contraproposta disponível','iago.pelitero@portobank.com','12/07/2026 09:14','21/07/2026 16:02','Cancelamento'],
+      ['FAQ-0002','Cartão de crédito','Cliente contesta a cobrança de anuidade','Prezado(a), entendo sua preocupação com o valor da anuidade. Antes de seguirmos, posso verificar as condições disponíveis para o seu perfil. Em muitos casos conseguimos isenção parcial mediante gasto mensal mínimo na fatura.','iago.pelitero@portobank.com','05/07/2026 14:30','05/07/2026 14:30','Anuidade'],
+      ['FAQ-0003','Cartão de crédito','Prazo de estorno de compra contestada','O prazo para análise da contestação é de até 7 dias úteis. Havendo procedência, o estorno aparece na fatura seguinte. O cliente pode acompanhar o protocolo pelo aplicativo.','supervisao@portobank.com','08/07/2026 15:22','08/07/2026 15:22','Contestação'],
+      ['FAQ-0004','Cartão de crédito','Como emitir segunda via da fatura','A segunda via fica disponível no aplicativo, em Cartões > Faturas. Também pode ser enviada por e-mail a pedido do cliente, para o endereço já cadastrado.','ana.souza@portobank.com','02/07/2026 10:05','02/07/2026 10:05','Fatura'],
+      ['FAQ-0005','Conta corrente','Cliente quer encerrar a conta','Confirme se não há saldo devedor, limite utilizado ou débitos automáticos ativos. Havendo pendência, informe o valor antes de prosseguir. O encerramento é concluído em até 30 dias.','ana.souza@portobank.com','28/06/2026 11:48','19/07/2026 08:31','Encerramento'],
+      ['FAQ-0006','Conta corrente','Isenção da tarifa de manutenção','A isenção é automática para contas com portabilidade de salário ativa. Nos demais casos, depende do pacote contratado — consulte na tela de produtos do cliente.','ana.souza@portobank.com','25/06/2026 16:12','25/06/2026 16:12','Tarifas'],
+      ['FAQ-0007','PIX','Limite noturno para transferências','Entre 20h e 6h o limite padrão é de R$ 1.000 por transação. O cliente pode solicitar alteração pelo aplicativo, com efeito em até 24 horas.','iago.pelitero@portobank.com','20/07/2026 09:00','20/07/2026 09:00','Limites'],
+      ['FAQ-0008','PIX','Cliente relata golpe e pede devolução','Registre o boletim de ocorrência informado pelo cliente e abra o Mecanismo Especial de Devolução no mesmo atendimento. O prazo de análise é de até 7 dias úteis.','supervisao@portobank.com','18/07/2026 13:37','18/07/2026 13:37','Golpes'],
+      ['FAQ-0009','Empréstimo','Simulação de portabilidade','Para simular, é necessário o número do contrato de origem e o saldo devedor atualizado. A simulação não gera compromisso e vale por 5 dias.','carlos.lima@portobank.com','15/05/2026 09:20','15/05/2026 09:20','']
+    ],
+    TAB: [
+      ['TAB-0001','Cartão de crédito','Cancelamento revertido — cliente retido','Contato receptivo. Cliente solicitou cancelamento por anuidade. Oferecida isenção mediante gasto mínimo. Cliente aceitou a proposta e permaneceu com o produto.','iago.pelitero@portobank.com','10/07/2026 11:40','10/07/2026 11:40','Cancelamento'],
+      ['TAB-0002','Cartão de crédito','Cancelamento efetivado a pedido','Contato receptivo. Cliente confirmou o cancelamento após apresentação das ofertas de retenção. Produto cancelado no sistema. Cliente informado sobre a fatura residual.','iago.pelitero@portobank.com','11/07/2026 08:55','11/07/2026 08:55','Cancelamento'],
+      ['TAB-0003','Cartão de crédito','Fatura reenviada por e-mail','Cliente solicitou segunda via. Fatura reenviada para o e-mail cadastrado. Cliente confirmou o recebimento durante o atendimento.','ana.souza@portobank.com','09/07/2026 17:03','09/07/2026 17:03','Fatura'],
+      ['TAB-0004','Conta corrente','Encerramento solicitado — em processamento','Cliente solicitou encerramento. Sem pendências financeiras. Solicitação registrada e protocolo informado ao cliente.','ana.souza@portobank.com','19/07/2026 08:35','19/07/2026 08:35','Encerramento'],
+      ['TAB-0005','PIX','Contestação de golpe registrada','Cliente relatou transação não reconhecida. MED aberto no atendimento, protocolo informado. Cliente orientado sobre o prazo de análise.','supervisao@portobank.com','18/07/2026 13:45','18/07/2026 13:45','Golpes'],
+      ['TAB-0006','Cobrança','Acordo de pagamento firmado','Cliente negociou o saldo em atraso. Acordo firmado em 3 parcelas. Primeiro boleto enviado por SMS durante o atendimento.','carlos.lima@portobank.com','12/06/2026 10:15','12/06/2026 10:15','']
+    ]
+  };
+
+  const CFG = { FAQ: { prefixo: 'FAQ' }, TAB: { prefixo: 'TAB' } };
+
+  function agora() {
+    const d = new Date(), p = n => String(n).padStart(2, '0');
+    return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear() +
+           ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+
+  function proximoId(tipo) {
+    let maior = 0;
+    BANCO[tipo].forEach(l => {
+      const n = parseInt(String(l[0]).split('-')[1], 10);
+      if (!isNaN(n) && n > maior) maior = n;
+    });
+    return CFG[tipo].prefixo + '-' + String(maior + 1).padStart(4, '0');
+  }
+
+  function validar(dados) {
+    const limpo = {
+      tipo: String(dados.tipo || '').trim().toUpperCase(),
+      categoria: String(dados.categoria || '').trim(),
+      subcategoria: String(dados.subcategoria || '').trim(),
+      descricao: String(dados.descricao || '').trim(),
+      texto: String(dados.texto || '').trim()
+    };
+    if (limpo.tipo !== 'FAQ' && limpo.tipo !== 'TAB') throw new Error('Tipo inválido. Use FAQ ou Tabulação.');
+    if (!limpo.categoria) throw new Error('Informe a categoria.');
+    if (limpo.categoria.length > 80) throw new Error('Categoria muito longa (máximo 80 caracteres).');
+    if (limpo.subcategoria.length > 80) throw new Error('Subcategoria muito longa (máximo 80 caracteres).');
+    if (!limpo.descricao) throw new Error('Informe a descrição/cenário.');
+    if (!limpo.texto) throw new Error('Informe o texto.');
+    return limpo;
+  }
+
+  const paraRegistro = (l, tipo) => ({
+    id: String(l[0]), tipo: tipo,
+    categoria: String(l[1] || ''), subcategoria: String(l[7] || ''),
+    descricao: String(l[2] || ''), texto: String(l[3] || ''),
+    criadoPor: String(l[4] || ''), dataCriacao: String(l[5] || ''), ultimaAlteracao: String(l[6] || '')
+  });
+
+  const API = {
+    getAllRecords() {
+      const registros = [];
+      ['FAQ', 'TAB'].forEach(t => BANCO[t].forEach(l => registros.push(paraRegistro(l, t))));
+      return { ok: true, registros: registros };
+    },
+
+    createRecord(dados) {
+      const d = validar(dados), ts = agora(), id = proximoId(d.tipo);
+      const linha = [id, d.categoria, d.descricao, d.texto, 'voce@portobank.com', ts, ts, d.subcategoria];
+      BANCO[d.tipo].push(linha);
+      return { ok: true, registro: paraRegistro(linha, d.tipo) };
+    },
+
+    updateRecord(dados) {
+      const d = validar(dados), id = String(dados.id || '');
+      const linha = BANCO[d.tipo].find(l => l[0] === id);
+      if (!linha) throw new Error('Registro ' + id + ' não encontrado. Ele pode ter sido excluído.');
+      linha[1] = d.categoria; linha[2] = d.descricao; linha[3] = d.texto;
+      linha[6] = agora(); linha[7] = d.subcategoria;
+      return { ok: true, registro: paraRegistro(linha, d.tipo) };
+    },
+
+    deleteRecord(id) {
+      id = String(id || '');
+      const tipo = id.indexOf('FAQ-') === 0 ? 'FAQ' : (id.indexOf('TAB-') === 0 ? 'TAB' : null);
+      if (!tipo) throw new Error('ID inválido: ' + id);
+      const i = BANCO[tipo].findIndex(l => l[0] === id);
+      if (i === -1) throw new Error('Registro ' + id + ' não encontrado.');
+      BANCO[tipo].splice(i, 1);
+      return { ok: true, id: id };
+    }
+  };
+
+  // Reproduz a interface encadeada do google.script.run, com latência
+  // artificial para que o skeleton de carregamento apareça de verdade.
+  function criarChamada() {
+    let sucesso = null, falha = null;
+    const chamada = {
+      withSuccessHandler(f) { sucesso = f; return chamada; },
+      withFailureHandler(f) { falha = f; return chamada; }
+    };
+    Object.keys(API).forEach(nome => {
+      chamada[nome] = function () {
+        const args = Array.prototype.slice.call(arguments);
+        setTimeout(() => {
+          try {
+            const r = API[nome].apply(null, args);
+            if (sucesso) sucesso(JSON.parse(JSON.stringify(r)));
+          } catch (e) {
+            if (falha) falha({ message: e.message });
+          }
+        }, 180);
+      };
+    });
+    return chamada;
+  }
+
+  window.google = { script: { get run() { return criarChamada(); } } };
+})();
+</script>
+
+  <div id="app">
+
+    <!-- ===================== MENU SUPERIOR ===================== -->
+    <header class="topbar">
+      <button class="brand" id="btn-home" title="Ir para a tela principal">
+        <span class="brand-mark">BC</span>
+        <span class="brand-nome">Base de Conhecimento</span>
+      </button>
+
+      <nav class="topbar-acoes">
+        <button class="btn btn-ghost" id="btn-nav-home">🏠 <span class="so-desktop">Base de Conhecimento</span></button>
+        <button class="btn btn-primario" id="btn-novo">➕ <span class="so-desktop">Novo Cadastro</span></button>
+        <button class="btn btn-ghost" id="btn-tema" title="Alterar tema">🎨 <span class="so-desktop" id="tema-nome">Tema</span></button>
+      </nav>
+    </header>
+
+    <!-- ===================== TELAS ===================== -->
+    <main class="conteudo">
+      <!-- ============================================================
+     HOME — Tela principal: pesquisa, filtros e lista de cards
+     ============================================================ -->
+<section id="view-home">
+
+  <!-- Barra de pesquisa e filtros -->
+  <div class="painel-busca">
+    <div class="busca-wrapper">
+      <div class="campo-busca">
+        <span class="icone-busca">🔍</span>
+        <input
+          type="search"
+          id="campo-pesquisa"
+          placeholder="Pesquisar — várias palavras filtram por todas elas"
+          autocomplete="off"
+          spellcheck="false">
+        <kbd class="so-desktop">Ctrl K</kbd>
+      </div>
+
+      <!-- Buscas recentes (abre ao focar o campo vazio) -->
+      <div class="historico" id="historico-busca" hidden></div>
+    </div>
+
+    <div class="linha-filtros">
+      <!-- Filtros rápidos por tipo -->
+      <div class="chips" role="tablist" aria-label="Filtrar por tipo">
+        <button class="chip ativo" data-filtro="TODOS" role="tab">Todos</button>
+        <button class="chip chip-faq" data-filtro="FAQ" role="tab">FAQs</button>
+        <button class="chip chip-tab" data-filtro="TAB" role="tab">Tabulações</button>
+      </div>
+
+      <!-- Filtros hierárquicos: subcategoria depende da categoria -->
+      <div class="filtros-hierarquia">
+        <select id="filtro-categoria" title="Filtrar por categoria" aria-label="Filtrar por categoria">
+          <option value="">Todas as categorias</option>
+        </select>
+        <span class="hierarquia-seta" aria-hidden="true">›</span>
+        <select id="filtro-subcategoria" title="Filtrar por subcategoria" aria-label="Filtrar por subcategoria" disabled>
+          <option value="">Todas as subcategorias</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Contadores -->
+    <div class="contadores" id="contadores">
+      <span class="contador contador-faq"><strong id="qtd-faq">0</strong> FAQs</span>
+      <span class="separador">·</span>
+      <span class="contador contador-tab"><strong id="qtd-tab">0</strong> Tabulações</span>
+      <span class="separador" id="sep-resultados" hidden>·</span>
+      <span class="contador" id="qtd-resultados" hidden></span>
+    </div>
+  </div>
+
+  <!-- Esqueleto de carregamento -->
+  <div id="skeleton" class="lista-cards">
+    <div class="card skeleton"></div>
+    <div class="card skeleton"></div>
+    <div class="card skeleton"></div>
+    <div class="card skeleton"></div>
+  </div>
+
+  <!-- Lista de registros -->
+  <div id="lista-cards" class="lista-cards" hidden></div>
+
+  <!-- Estado vazio -->
+  <div id="estado-vazio" class="estado-vazio" hidden>
+    <div class="vazio-icone">📭</div>
+    <h3 id="vazio-titulo">Nenhum registro encontrado</h3>
+    <p id="vazio-texto">Ajuste a pesquisa ou cadastre um novo conteúdo.</p>
+    <button class="btn btn-primario" id="btn-vazio-novo">➕ Novo Cadastro</button>
+  </div>
+
+</section>
+
+      <!-- ============================================================
+     CADASTRO — Tela de cadastro/edição de FAQ e Tabulação
+     ============================================================ -->
+<section id="view-cadastro" hidden>
+
+  <div class="painel-form">
+    <h2 id="form-titulo">Novo Cadastro</h2>
+    <p class="form-subtitulo" id="form-subtitulo">Organize o conteúdo em Categoria › Subcategoria › Descrição para facilitar a localização.</p>
+
+    <!-- Tipo -->
+    <div class="grupo-campo">
+      <label class="rotulo">Tipo</label>
+      <div class="segmentado" id="seg-tipo">
+        <button type="button" class="seg-opcao ativo" data-tipo="FAQ">FAQ</button>
+        <button type="button" class="seg-opcao" data-tipo="TAB">Tabulação</button>
+      </div>
+    </div>
+
+    <!-- Hierarquia: Categoria › Subcategoria › Descrição -->
+    <div class="grupo-hierarquia">
+      <div class="grupo-campo">
+        <label class="rotulo" for="campo-categoria">Categoria</label>
+        <input
+          type="text"
+          id="campo-categoria"
+          list="lista-categorias"
+          placeholder="Ex.: Cartão de crédito"
+          maxlength="80"
+          autocomplete="off">
+        <datalist id="lista-categorias"></datalist>
+      </div>
+
+      <div class="grupo-campo">
+        <label class="rotulo" for="campo-subcategoria">
+          Subcategoria <span class="rotulo-opcional">opcional</span>
+        </label>
+        <input
+          type="text"
+          id="campo-subcategoria"
+          list="lista-subcategorias"
+          placeholder="Ex.: Cancelamento"
+          maxlength="80"
+          autocomplete="off">
+        <datalist id="lista-subcategorias"></datalist>
+      </div>
+    </div>
+
+    <!-- Prévia do caminho montado -->
+    <p class="previa-caminho" id="previa-caminho" hidden></p>
+
+    <!-- Descrição / Cenário -->
+    <div class="grupo-campo">
+      <label class="rotulo" for="campo-descricao">Descrição / Cenário</label>
+      <input
+        type="text"
+        id="campo-descricao"
+        placeholder="Ex.: Qual motivo?"
+        maxlength="200"
+        autocomplete="off">
+    </div>
+
+    <!-- Texto -->
+    <div class="grupo-campo">
+      <label class="rotulo" for="campo-texto">Texto</label>
+      <textarea
+        id="campo-texto"
+        rows="8"
+        placeholder="Texto completo que será copiado pelo atendente…"></textarea>
+      <span class="dica-campo"><span id="contagem-texto">0</span> caracteres</span>
+    </div>
+
+    <!-- Ações -->
+    <div class="form-acoes">
+      <button type="button" class="btn btn-ghost" id="btn-cancelar">Cancelar</button>
+      <button type="button" class="btn btn-primario" id="btn-salvar">
+        <span id="btn-salvar-texto">Salvar</span>
+      </button>
+    </div>
+  </div>
+
+</section>
+
+    </main>
+
+  </div>
+
+  <!-- ===================== TOASTS ===================== -->
+  <div id="toasts" aria-live="polite"></div>
+
+  <!-- ===================== MODAL DE CONFIRMAÇÃO ===================== -->
+  <div class="modal-overlay" id="modal-confirmar" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
+      <h3 id="modal-titulo">Excluir registro</h3>
+      <p id="modal-mensagem">Tem certeza que deseja excluir este registro? Esta ação não pode ser desfeita.</p>
+      <div class="modal-acoes">
+        <button class="btn btn-ghost" id="modal-cancelar">Cancelar</button>
+        <button class="btn btn-perigo" id="modal-confirmar-btn">Excluir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== ÁREA DE IMPRESSÃO ===================== -->
+  <div id="print-area" aria-hidden="true"></div>
+
+  <script>
+/* ============================================================
+   BASE DE CONHECIMENTO — Script.html
+   Lógica do cliente: cache em memória, pesquisa em tempo real,
+   CRUD via google.script.run, temas, favoritos e atalhos.
+   ============================================================ */
+(() => {
+  'use strict';
+
+  /* ----------------------------------------------------------
+   * Constantes e estado
+   * -------------------------------------------------------- */
+  const TEMAS = [
+    { id: 'portobank', nome: 'PortoBank' },
+    { id: 'rosa',      nome: 'Rosa' },
+    { id: 'dark',      nome: 'Dark' }
+  ];
+
+  const LIMITE_TEXTO_CURTO = 320; // acima disso o card ganha "Ver mais"
+
+  /**
+   * Sentinela para o filtro "Sem subcategoria".
+   * Usa um caractere de controle para nunca colidir com uma
+   * subcategoria real que o usuário venha a chamar de "Geral".
+   */
+  const SEM_SUB = '\u0001';
+
+  const Estado = {
+    registros: [],            // cache local — carregado uma única vez
+    carregado: false,
+    filtroTipo: 'TODOS',      // TODOS | FAQ | TAB
+    filtroCategoria: '',
+    filtroSubcategoria: '',
+    busca: '',
+    favoritos: new Set(),
+    historico: [],
+    expandidos: new Set(),    // IDs com texto expandido
+    editandoId: null,         // ID em edição (null = novo cadastro)
+    tipoForm: 'FAQ',
+    salvando: false,
+    confirmarAcao: null       // callback do modal de confirmação
+  };
+
+  const $ = (sel) => document.querySelector(sel);
+  const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+  /* ----------------------------------------------------------
+   * Utilitários
+   * -------------------------------------------------------- */
+
+  /** Escapa HTML para exibição segura. */
+  function escaparHtml(texto) {
+    return String(texto)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  /** Remove acentos preservando o tamanho da string (para busca). */
+  function normalizar(texto) {
+    return String(texto)
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+  }
+
+  /**
+   * Normaliza preservando o alinhamento de índices com o texto original.
+   * Cada caractere vira exatamente um caractere normalizado, para que
+   * uma posição encontrada na versão normalizada valha também na original.
+   * @param {string} texto
+   * @returns {string}
+   */
+  function normalizarAlinhado(texto) {
+    return Array.from(String(texto))
+      .map(c => {
+        const n = c.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        return n.length === 1 ? n : c.toLowerCase();
+      })
+      .join('');
+  }
+
+  /**
+   * OTIMIZAÇÃO P-01 — índice de busca pré-computado.
+   *
+   * Antes, cada tecla digitada refazia a normalização caractere a
+   * caractere do texto completo de TODOS os registros visíveis. Com
+   * 400 registros de 1.500 caracteres, eram centenas de milhares de
+   * chamadas de normalize() por tecla.
+   *
+   * Agora esse trabalho acontece UMA vez por registro, no carregamento
+   * (e ao criar/editar). Durante a digitação sobra apenas indexOf.
+   *
+   * @param {Object} r - Registro do cache.
+   * @returns {Object} O mesmo registro, com campos derivados.
+   */
+  function indexar(r) {
+    r._n = {
+      categoria: normalizarAlinhado(r.categoria),
+      subcategoria: normalizarAlinhado(r.subcategoria),
+      descricao: normalizarAlinhado(r.descricao),
+      texto: normalizarAlinhado(r.texto),
+      criadoPor: normalizarAlinhado(r.criadoPor)
+    };
+
+    // Campo único usado pelo filtro (evita 5 buscas separadas por registro).
+    r._busca = [r._n.categoria, r._n.subcategoria, r._n.descricao,
+                r._n.texto, r._n.criadoPor].join(' ');
+
+    // Timestamp pré-calculado: evita parse de data a cada comparação do sort.
+    r._ts = tempoDe(r.dataCriacao);
+    return r;
+  }
+
+  /** Termos da busca atual (múltiplas palavras = AND implícito). */
+  function termosBusca() {
+    return normalizar(Estado.busca).split(/\s+/).filter(Boolean);
+  }
+
+  /**
+   * Destaca todos os termos pesquisados em um campo já indexado.
+   * Recebe a versão normalizada pronta, então não normaliza nada aqui.
+   * @param {string} original - Texto exibido.
+   * @param {string} base - Versão normalizada e alinhada.
+   * @param {string[]} termos - Termos normalizados.
+   * @returns {string} HTML escapado, com <mark> nas ocorrências.
+   */
+  function destacar(original, base, termos) {
+    original = String(original);
+    if (!termos || !termos.length) return escaparHtml(original);
+
+    // 1. Coleta as ocorrências de cada termo.
+    const marcas = [];
+    termos.forEach(termo => {
+      let pos = 0;
+      while (pos <= base.length) {
+        const achou = base.indexOf(termo, pos);
+        if (achou === -1) break;
+        marcas.push([achou, achou + termo.length]);
+        pos = achou + termo.length;
+      }
+    });
+
+    if (!marcas.length) return escaparHtml(original);
+
+    // 2. Funde intervalos sobrepostos (termos que se cruzam no texto).
+    marcas.sort((a, b) => a[0] - b[0]);
+    const fundidas = [];
+    marcas.forEach(m => {
+      const ultima = fundidas[fundidas.length - 1];
+      if (ultima && m[0] <= ultima[1]) ultima[1] = Math.max(ultima[1], m[1]);
+      else fundidas.push([m[0], m[1]]);
+    });
+
+    // 3. Monta a saída escapando tudo que vem do usuário.
+    let saida = '', pos = 0;
+    fundidas.forEach(par => {
+      saida += escaparHtml(original.slice(pos, par[0]));
+      saida += '<mark>' + escaparHtml(original.slice(par[0], par[1])) + '</mark>';
+      pos = par[1];
+    });
+    return saida + escaparHtml(original.slice(pos));
+  }
+
+  /** Converte "dd/MM/yyyy HH:mm" em timestamp para ordenação. */
+  function tempoDe(dataBr) {
+    if (!dataBr) return 0;
+    const [data, hora] = String(dataBr).split(' ');
+    const [dia, mes, ano] = (data || '').split('/').map(Number);
+    const [hh, mm] = (hora || '0:0').split(':').map(Number);
+    if (!ano) return 0;
+    return new Date(ano, (mes || 1) - 1, dia || 1, hh || 0, mm || 0).getTime();
+  }
+
+  /** Exibe um toast temporário. */
+  function toast(mensagem, tipo) {
+    const el = document.createElement('div');
+    el.className = 'toast' + (tipo === 'erro' ? ' erro' : '');
+    el.textContent = mensagem;
+    $('#toasts').appendChild(el);
+    setTimeout(() => {
+      el.classList.add('saindo');
+      setTimeout(() => el.remove(), 260);
+    }, 2600);
+  }
+
+  /** Tempo máximo de espera por uma resposta do servidor (ms). */
+  const TIMEOUT_SERVIDOR = 30000;
+
+  /**
+   * Executa uma função do servidor retornando Promise.
+   *
+   * CORREÇÃO B-02: o google.script.run pode nunca chamar nenhum dos
+   * handlers (conexão perdida, script suspenso). Sem timeout, o botão
+   * ficava travado em "Salvando…" para sempre e o usuário perdia o
+   * conteúdo digitado. O guard "finalizado" garante que a Promise
+   * resolva ou rejeite uma única vez.
+   */
+  function servidor(funcao, ...args) {
+    return new Promise((resolver, rejeitar) => {
+      let finalizado = false;
+
+      const temporizador = setTimeout(() => {
+        if (finalizado) return;
+        finalizado = true;
+        rejeitar(new Error('O servidor demorou para responder. Verifique sua conexão e tente novamente.'));
+      }, TIMEOUT_SERVIDOR);
+
+      const encerrar = (acao) => (valor) => {
+        if (finalizado) return;
+        finalizado = true;
+        clearTimeout(temporizador);
+        acao(valor);
+      };
+
+      google.script.run
+        .withSuccessHandler(encerrar(resolver))
+        .withFailureHandler(encerrar(err => {
+          rejeitar(new Error(err && err.message ? err.message : 'Erro no servidor.'));
+        }))
+        [funcao](...args);
+    });
+  }
+
+  /* ----------------------------------------------------------
+   * Persistência local (tema e favoritos)
+   * -------------------------------------------------------- */
+
+  function carregarPreferencias() {
+    try {
+      const tema = localStorage.getItem('bc_tema');
+      if (tema && TEMAS.some(t => t.id === tema)) aplicarTema(tema, false);
+      else aplicarTema('portobank', false);
+
+      const favs = JSON.parse(localStorage.getItem('bc_favoritos') || '[]');
+      Estado.favoritos = new Set(favs);
+    } catch (e) {
+      aplicarTema('portobank', false);
+    }
+
+    carregarHistorico();
+  }
+
+  /** Máximo de buscas guardadas no histórico. */
+  const LIMITE_HISTORICO = 8;
+
+  function carregarHistorico() {
+    try {
+      const bruto = JSON.parse(localStorage.getItem('bc_historico') || '[]');
+      Estado.historico = Array.isArray(bruto) ? bruto.slice(0, LIMITE_HISTORICO) : [];
+    } catch (e) {
+      Estado.historico = [];
+    }
+  }
+
+  /**
+   * Registra um termo no histórico. Chamado apenas quando a busca é
+   * "confirmada" (Enter ou uso de um resultado) — não a cada tecla,
+   * o que encheria a lista de fragmentos como "car", "cart", "carta".
+   */
+  function registrarBusca(termo) {
+    termo = String(termo || '').trim();
+    if (termo.length < 3) return;
+
+    Estado.historico = [termo].concat(
+      Estado.historico.filter(t => normalizar(t) !== normalizar(termo))
+    ).slice(0, LIMITE_HISTORICO);
+
+    try {
+      localStorage.setItem('bc_historico', JSON.stringify(Estado.historico));
+    } catch (e) { /* armazenamento indisponível — ignora */ }
+  }
+
+  function limparHistorico() {
+    Estado.historico = [];
+    try { localStorage.removeItem('bc_historico'); } catch (e) { /* ignora */ }
+    fecharHistorico();
+    toast('Histórico de pesquisa limpo.');
+  }
+
+  function abrirHistorico() {
+    const caixa = $('#historico-busca');
+    if (!Estado.historico.length) { caixa.hidden = true; return; }
+
+    caixa.innerHTML =
+      '<div class="historico-titulo">Buscas recentes</div>' +
+      Estado.historico.map(t =>
+        `<button class="historico-item" data-termo="${escaparHtml(t)}">🕐 ${escaparHtml(t)}</button>`
+      ).join('') +
+      '<button class="historico-limpar" data-acao="limpar">Limpar histórico</button>';
+
+    caixa.hidden = false;
+  }
+
+  function fecharHistorico() {
+    $('#historico-busca').hidden = true;
+  }
+
+  function salvarFavoritos() {
+    try {
+      localStorage.setItem('bc_favoritos', JSON.stringify([...Estado.favoritos]));
+    } catch (e) { /* armazenamento indisponível — ignora */ }
+  }
+
+  function aplicarTema(id, notificar) {
+    document.documentElement.setAttribute('data-theme', id);
+    try { localStorage.setItem('bc_tema', id); } catch (e) { /* ignora */ }
+    const tema = TEMAS.find(t => t.id === id);
+    $('#tema-nome').textContent = tema ? tema.nome : 'Tema';
+    if (notificar) toast('Tema ' + tema.nome + ' aplicado.');
+  }
+
+  function alternarTema() {
+    const atual = document.documentElement.getAttribute('data-theme') || 'portobank';
+    const indice = TEMAS.findIndex(t => t.id === atual);
+    aplicarTema(TEMAS[(indice + 1) % TEMAS.length].id, true);
+  }
+
+  /* ----------------------------------------------------------
+   * Carregamento de dados (uma única chamada ao servidor)
+   * -------------------------------------------------------- */
+
+  async function carregarRegistros() {
+    try {
+      const resposta = await servidor('getAllRecords');
+      Estado.registros = (resposta.registros || []).map(indexar);
+      Estado.carregado = true;
+      $('#skeleton').hidden = true;
+      atualizarCategorias();
+      renderizar();
+    } catch (erro) {
+      $('#skeleton').hidden = true;
+      $('#estado-vazio').hidden = false;
+      $('#vazio-titulo').textContent = 'Não foi possível carregar os dados';
+      $('#vazio-texto').textContent = erro.message + ' Recarregue a página para tentar novamente.';
+      toast('Erro ao carregar registros.', 'erro');
+    }
+  }
+
+  /* ----------------------------------------------------------
+   * Filtros, pesquisa e renderização
+   * -------------------------------------------------------- */
+
+  /**
+   * Monta o índice hierárquico Categoria → Set(Subcategorias)
+   * a partir do cache local. Recalculado apenas quando os dados mudam.
+   * @returns {Map<string, Set<string>>}
+   */
+  function mapaHierarquia() {
+    const mapa = new Map();
+    Estado.registros.forEach(r => {
+      if (!r.categoria) return;
+      if (!mapa.has(r.categoria)) mapa.set(r.categoria, new Set());
+      if (r.subcategoria) mapa.get(r.categoria).add(r.subcategoria);
+    });
+    return mapa;
+  }
+
+  /** Ordenação alfabética respeitando acentuação do português. */
+  function ordemPtBr(a, b) {
+    return a.localeCompare(b, 'pt-BR');
+  }
+
+  /** Popula os selects de categoria/subcategoria e os datalists do formulário. */
+  function atualizarCategorias() {
+    const mapa = mapaHierarquia();
+    const categorias = [...mapa.keys()].sort(ordemPtBr);
+
+    const select = $('#filtro-categoria');
+    const valorAtual = select.value;
+    select.innerHTML = '<option value="">Todas as categorias</option>' +
+      categorias.map(c => `<option value="${escaparHtml(c)}">${escaparHtml(c)}</option>`).join('');
+
+    if (categorias.includes(valorAtual)) {
+      select.value = valorAtual;
+    } else if (valorAtual) {
+      // CORREÇÃO B-01: a categoria selecionada deixou de existir (o último
+      // registro dela foi excluído). O <select> voltava sozinho para "Todas",
+      // mas Estado.filtroCategoria mantinha o valor antigo — a lista ficava
+      // permanentemente vazia, sem motivo aparente, até recarregar a página.
+      select.value = '';
+      Estado.filtroCategoria = '';
+    }
+
+    // Datalist do formulário (sugestões de categoria).
+    $('#lista-categorias').innerHTML =
+      categorias.map(c => `<option value="${escaparHtml(c)}">`).join('');
+
+    atualizarSubcategorias(mapa);
+    atualizarSugestoesSubcategoria(mapa);
+  }
+
+  /**
+   * Preenche o select de subcategoria em cascata: só oferece as
+   * subcategorias que existem dentro da categoria selecionada.
+   * @param {Map} [mapa] - Índice já calculado, se disponível.
+   */
+  function atualizarSubcategorias(mapa) {
+    mapa = mapa || mapaHierarquia();
+    const select = $('#filtro-subcategoria');
+    const categoria = Estado.filtroCategoria;
+
+    if (!categoria) {
+      select.innerHTML = '<option value="">Todas as subcategorias</option>';
+      select.value = '';
+      select.disabled = true;
+      Estado.filtroSubcategoria = '';
+      return;
+    }
+
+    const subs = [...(mapa.get(categoria) || [])].sort(ordemPtBr);
+    const temSemSub = Estado.registros.some(r => r.categoria === categoria && !r.subcategoria);
+
+    select.innerHTML = '<option value="">Todas as subcategorias</option>' +
+      subs.map(sub => `<option value="${escaparHtml(sub)}">${escaparHtml(sub)}</option>`).join('') +
+      (temSemSub ? `<option value="${SEM_SUB}">Sem subcategoria</option>` : '');
+
+    select.disabled = subs.length === 0 && !temSemSub;
+
+    // Mesma proteção do B-01, agora no segundo nível da hierarquia.
+    const aindaExiste = Estado.filtroSubcategoria === SEM_SUB
+      ? temSemSub
+      : subs.includes(Estado.filtroSubcategoria);
+
+    if (Estado.filtroSubcategoria && !aindaExiste) Estado.filtroSubcategoria = '';
+    select.value = Estado.filtroSubcategoria;
+  }
+
+  /**
+   * Sugestões de subcategoria no formulário, filtradas pela categoria
+   * já digitada. Sem categoria conhecida, sugere todas as existentes.
+   * @param {Map} [mapa]
+   */
+  function atualizarSugestoesSubcategoria(mapa) {
+    mapa = mapa || mapaHierarquia();
+    const campo = $('#campo-categoria');
+    const categoria = campo ? campo.value.trim() : '';
+
+    const subs = (categoria && mapa.has(categoria))
+      ? [...mapa.get(categoria)]
+      : [...new Set(Estado.registros.map(r => r.subcategoria).filter(Boolean))];
+
+    $('#lista-subcategorias').innerHTML =
+      subs.sort(ordemPtBr).map(sub => `<option value="${escaparHtml(sub)}">`).join('');
+  }
+
+  /**
+   * Aplica filtros e busca sobre o cache local.
+   * Múltiplas palavras funcionam como AND implícito: "cartao cancelamento"
+   * exige as duas, em qualquer campo e em qualquer ordem.
+   */
+  function filtrar() {
+    const termos = termosBusca();
+
+    return Estado.registros.filter(r => {
+      if (Estado.filtroTipo !== 'TODOS' && r.tipo !== Estado.filtroTipo) return false;
+      if (Estado.filtroCategoria && r.categoria !== Estado.filtroCategoria) return false;
+
+      if (Estado.filtroSubcategoria) {
+        if (Estado.filtroSubcategoria === SEM_SUB) {
+          if (r.subcategoria) return false;
+        } else if (r.subcategoria !== Estado.filtroSubcategoria) {
+          return false;
+        }
+      }
+
+      if (!termos.length) return true;
+      return termos.every(termo => r._busca.includes(termo));
+    });
+  }
+
+  /** Ordena: favoritos primeiro, depois data de criação decrescente. */
+  function ordenar(lista) {
+    return lista.sort((a, b) => {
+      const favA = Estado.favoritos.has(a.id) ? 1 : 0;
+      const favB = Estado.favoritos.has(b.id) ? 1 : 0;
+      if (favA !== favB) return favB - favA;
+      return b._ts - a._ts;
+    });
+  }
+
+  /** Monta o HTML de um card de registro. */
+  function htmlCard(r, termos) {
+    const favorito = Estado.favoritos.has(r.id);
+    const longo = r.texto.length > LIMITE_TEXTO_CURTO;
+    const expandido = Estado.expandidos.has(r.id);
+    const editado = r.ultimaAlteracao && r.ultimaAlteracao !== r.dataCriacao;
+    const rotuloTipo = r.tipo === 'FAQ' ? 'FAQ' : 'Tabulação';
+
+    // Caminho hierárquico: Categoria › Subcategoria
+    const caminho = r.subcategoria
+      ? destacar(r.categoria, r._n.categoria, termos) +
+        '<span class="caminho-sep">›</span>' +
+        destacar(r.subcategoria, r._n.subcategoria, termos)
+      : destacar(r.categoria, r._n.categoria, termos);
+    const caminhoSimples = r.subcategoria ? r.categoria + ' › ' + r.subcategoria : r.categoria;
+
+    return `
+      <article class="card tipo-${r.tipo}" data-id="${r.id}">
+        <div class="card-topo">
+          <span class="badge badge-${r.tipo}">${rotuloTipo}</span>
+          <span class="card-categoria" title="${escaparHtml(caminhoSimples)}">${caminho}</span>
+          <button class="btn-favorito ${favorito ? 'ativo' : ''}" data-acao="favoritar"
+                  title="${favorito ? 'Remover dos favoritos' : 'Favoritar'}">${favorito ? '⭐' : '☆'}</button>
+        </div>
+
+        <h3 class="card-descricao">${destacar(r.descricao, r._n.descricao, termos)}</h3>
+
+        <div class="card-texto ${longo && !expandido ? 'recolhido' : ''}">${destacar(r.texto, r._n.texto, termos)}</div>
+        ${longo ? `<button class="btn-expandir" data-acao="expandir">${expandido ? 'Ver menos ▲' : 'Ver mais ▼'}</button>` : ''}
+
+        <div class="card-rodape">
+          <div class="card-meta">
+            <span title="${escaparHtml(r.criadoPor)}">👤 ${destacar(r.criadoPor, r._n.criadoPor, termos)}</span>
+            <span>🕐 ${escaparHtml(r.dataCriacao)}${editado ? ' · editado em ' + escaparHtml(r.ultimaAlteracao) : ''}</span>
+          </div>
+          <div class="card-acoes">
+            <button class="btn-copiar" data-acao="copiar" title="Copiar texto">📋 Copiar</button>
+            <button class="btn-icone" data-acao="editar" title="Editar">✏️</button>
+            <button class="btn-icone" data-acao="imprimir" title="Imprimir / PDF">🖨️</button>
+            <button class="btn-icone" data-acao="excluir" title="Excluir">🗑️</button>
+          </div>
+        </div>
+      </article>`;
+  }
+
+  /** Renderiza a lista completa e os contadores. */
+  function renderizar() {
+    if (!Estado.carregado) return;
+
+    const resultados = ordenar(filtrar());
+    const lista = $('#lista-cards');
+    const vazio = $('#estado-vazio');
+
+    // Contadores gerais (independem dos filtros).
+    $('#qtd-faq').textContent = Estado.registros.filter(r => r.tipo === 'FAQ').length;
+    $('#qtd-tab').textContent = Estado.registros.filter(r => r.tipo === 'TAB').length;
+
+    // Contador de resultados (só aparece quando há filtro/busca ativa).
+    const filtrando = Estado.busca.trim() || Estado.filtroTipo !== 'TODOS' ||
+                      Estado.filtroCategoria || Estado.filtroSubcategoria;
+    $('#sep-resultados').hidden = !filtrando;
+    $('#qtd-resultados').hidden = !filtrando;
+    if (filtrando) {
+      $('#qtd-resultados').textContent = resultados.length + ' resultado' + (resultados.length === 1 ? '' : 's');
+    }
+
+    if (!resultados.length) {
+      lista.hidden = true;
+      vazio.hidden = false;
+      $('#vazio-titulo').textContent = Estado.registros.length
+        ? 'Nenhum resultado para os filtros atuais'
+        : 'A base ainda está vazia';
+      $('#vazio-texto').textContent = Estado.registros.length
+        ? 'Tente outro termo ou limpe os filtros.'
+        : 'Cadastre a primeira FAQ ou Tabulação para começar.';
+      return;
+    }
+
+    vazio.hidden = true;
+    lista.hidden = false;
+
+    const termos = termosBusca();
+    lista.innerHTML = resultados.map(r => htmlCard(r, termos)).join('');
+  }
+
+  /* ----------------------------------------------------------
+   * Ações dos cards
+   * -------------------------------------------------------- */
+
+  async function copiarTexto(registro) {
+    const texto = registro.texto;
+    try {
+      await navigator.clipboard.writeText(texto);
+    } catch (e) {
+      // Fallback para navegadores/iframes sem Clipboard API.
+      // CORREÇÃO B-06: execCommand pode lançar em iframes restritos.
+      // Sem o catch, o erro escapava e o usuário não recebia retorno algum.
+      const ta = document.createElement('textarea');
+      ta.value = texto;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      let copiou = false;
+      try { copiou = document.execCommand('copy'); } catch (e2) { copiou = false; } finally { ta.remove(); }
+      if (!copiou) {
+        toast('Não foi possível copiar. Selecione o texto e use Ctrl+C.', 'erro');
+        return;
+      }
+    }
+    toast('Texto copiado com sucesso.');
+  }
+
+  /** Localiza o elemento de um card já renderizado. */
+  function cardDe(id) {
+    return $('#lista-cards .card[data-id="' + id + '"]');
+  }
+
+  /**
+   * OTIMIZAÇÃO P-03 — atualização cirúrgica.
+   *
+   * Favoritar recriava os 400 cards da lista só para trocar uma estrela.
+   * Agora só o card afetado é tocado. Efeito colateral desejável: o card
+   * não "salta" de posição sob o cursor — a reordenação por favoritos
+   * passa a valer na próxima busca, filtro ou recarga.
+   */
+  function alternarFavorito(id) {
+    const favorito = !Estado.favoritos.has(id);
+    if (favorito) Estado.favoritos.add(id);
+    else Estado.favoritos.delete(id);
+    salvarFavoritos();
+
+    const card = cardDe(id);
+    if (!card) { renderizar(); return; }
+
+    const botao = card.querySelector('[data-acao="favoritar"]');
+    botao.classList.toggle('ativo', favorito);
+    botao.textContent = favorito ? '⭐' : '☆';
+    botao.title = favorito ? 'Remover dos favoritos' : 'Favoritar';
+  }
+
+  /** Expande/recolhe apenas o card alvo, sem redesenhar a lista. */
+  function alternarExpandido(id) {
+    const expandido = !Estado.expandidos.has(id);
+    if (expandido) Estado.expandidos.add(id);
+    else Estado.expandidos.delete(id);
+
+    const card = cardDe(id);
+    if (!card) { renderizar(); return; }
+
+    card.querySelector('.card-texto').classList.toggle('recolhido', !expandido);
+    const botao = card.querySelector('[data-acao="expandir"]');
+    if (botao) botao.textContent = expandido ? 'Ver menos ▲' : 'Ver mais ▼';
+  }
+
+  function imprimirRegistro(r) {
+    const rotulo = r.tipo === 'FAQ' ? 'FAQ' : 'Tabulação';
+    $('#print-area').innerHTML = `
+      <h1>${escaparHtml(r.descricao)}</h1>
+      <div class="print-meta">
+        ${rotulo} · ${escaparHtml(r.categoria)} · ${escaparHtml(r.id)}<br>
+        Criado por ${escaparHtml(r.criadoPor)} em ${escaparHtml(r.dataCriacao)}
+        ${r.ultimaAlteracao !== r.dataCriacao ? ' · Última alteração: ' + escaparHtml(r.ultimaAlteracao) : ''}
+      </div>
+      <div class="print-texto">${escaparHtml(r.texto)}</div>`;
+    window.print();
+  }
+
+  function pedirExclusao(registro) {
+    $('#modal-mensagem').textContent =
+      `Tem certeza que deseja excluir "${registro.descricao}" (${registro.id})? Esta ação não pode ser desfeita.`;
+    Estado.confirmarAcao = async () => {
+      try {
+        await servidor('deleteRecord', registro.id);
+        Estado.registros = Estado.registros.filter(r => r.id !== registro.id);
+        Estado.favoritos.delete(registro.id);
+        salvarFavoritos();
+        atualizarCategorias();
+        renderizar();
+        toast('Registro excluído.');
+      } catch (erro) {
+        toast(erro.message, 'erro');
+      }
+    };
+    $('#modal-confirmar').hidden = false;
+  }
+
+  function fecharModal() {
+    $('#modal-confirmar').hidden = true;
+    Estado.confirmarAcao = null;
+  }
+
+  /* ----------------------------------------------------------
+   * Navegação entre telas
+   * -------------------------------------------------------- */
+
+  function mostrarHome() {
+    $('#view-cadastro').hidden = true;
+    $('#view-home').hidden = false;
+    Estado.editandoId = null;
+  }
+
+  function abrirCadastro(registro) {
+    Estado.editandoId = registro ? registro.id : null;
+
+    $('#form-titulo').textContent = registro ? 'Editar Registro' : 'Novo Cadastro';
+    $('#form-subtitulo').textContent = registro
+      ? 'Editando ' + registro.id + '. O tipo não pode ser alterado.'
+      : 'Preencha os campos abaixo para adicionar um novo conteúdo à base.';
+    $('#btn-salvar-texto').textContent = registro ? 'Salvar alterações' : 'Salvar';
+
+    definirTipoForm(registro ? registro.tipo : 'FAQ');
+    $('#seg-tipo').classList.toggle('bloqueado', !!registro);
+
+    $('#campo-categoria').value = registro ? registro.categoria : '';
+    $('#campo-subcategoria').value = registro ? registro.subcategoria : '';
+    $('#campo-descricao').value = registro ? registro.descricao : '';
+    $('#campo-texto').value = registro ? registro.texto : '';
+    atualizarContagemTexto();
+    atualizarSugestoesSubcategoria();
+    atualizarPreviaCaminho();
+    limparInvalidos();
+
+    $('#view-home').hidden = true;
+    $('#view-cadastro').hidden = false;
+    $('#campo-categoria').focus();
+    window.scrollTo({ top: 0 });
+  }
+
+  function definirTipoForm(tipo) {
+    Estado.tipoForm = tipo;
+    $$('#seg-tipo .seg-opcao').forEach(btn => {
+      btn.classList.toggle('ativo', btn.dataset.tipo === tipo);
+    });
+  }
+
+  /** Mostra ao vivo o caminho que está sendo montado no formulário. */
+  function atualizarPreviaCaminho() {
+    const cat = $('#campo-categoria').value.trim();
+    const sub = $('#campo-subcategoria').value.trim();
+    const desc = $('#campo-descricao').value.trim();
+    const alvo = $('#previa-caminho');
+
+    if (!cat && !sub && !desc) {
+      alvo.hidden = true;
+      return;
+    }
+
+    const partes = [cat || 'Categoria', sub, desc].filter(Boolean);
+    alvo.innerHTML = partes
+      .map(parte => escaparHtml(parte))
+      .join('<span class="caminho-sep">›</span>');
+    alvo.hidden = false;
+  }
+
+  function atualizarContagemTexto() {
+    $('#contagem-texto').textContent = $('#campo-texto').value.length;
+  }
+
+  function limparInvalidos() {
+    $$('.invalido').forEach(el => el.classList.remove('invalido'));
+  }
+
+  /* ----------------------------------------------------------
+   * Salvamento (criação e edição)
+   * -------------------------------------------------------- */
+
+  async function salvar() {
+    if (Estado.salvando) return;
+
+    const dados = {
+      tipo: Estado.tipoForm,
+      categoria: $('#campo-categoria').value.trim(),
+      subcategoria: $('#campo-subcategoria').value.trim(),
+      descricao: $('#campo-descricao').value.trim(),
+      texto: $('#campo-texto').value.trim()
+    };
+
+    // Validação simples no cliente com destaque visual.
+    limparInvalidos();
+    let invalido = null;
+    if (!dados.categoria) invalido = '#campo-categoria';
+    else if (!dados.descricao) invalido = '#campo-descricao';
+    else if (!dados.texto) invalido = '#campo-texto';
+
+    if (invalido) {
+      $(invalido).classList.add('invalido');
+      $(invalido).focus();
+      toast('Preencha todos os campos.', 'erro');
+      return;
+    }
+
+    Estado.salvando = true;
+    const btn = $('#btn-salvar');
+    btn.disabled = true;
+    $('#btn-salvar-texto').textContent = 'Salvando…';
+
+    // Captura ANTES de mostrarHome(), que zera Estado.editandoId.
+    // Sem isso, o toast de edição exibia "Cadastro realizado" por engano.
+    const ehEdicao = !!Estado.editandoId;
+
+    try {
+      let resposta;
+      if (ehEdicao) {
+        resposta = await servidor('updateRecord', Object.assign({ id: Estado.editandoId }, dados));
+        const indice = Estado.registros.findIndex(r => r.id === resposta.registro.id);
+        if (indice !== -1) Estado.registros[indice] = indexar(resposta.registro);
+      } else {
+        resposta = await servidor('createRecord', dados);
+        Estado.registros.push(indexar(resposta.registro));
+      }
+
+      atualizarCategorias();
+      renderizar();
+      mostrarHome();
+      toast(ehEdicao ? 'Alterações salvas com sucesso.' : 'Cadastro realizado com sucesso.');
+    } catch (erro) {
+      toast(erro.message, 'erro');
+    } finally {
+      Estado.salvando = false;
+      btn.disabled = false;
+      $('#btn-salvar-texto').textContent = ehEdicao ? 'Salvar alterações' : 'Salvar';
+    }
+  }
+
+  /* ----------------------------------------------------------
+   * Eventos
+   * -------------------------------------------------------- */
+
+  function registrarEventos() {
+    // Navegação
+    $('#btn-home').addEventListener('click', mostrarHome);
+    $('#btn-nav-home').addEventListener('click', mostrarHome);
+    $('#btn-novo').addEventListener('click', () => abrirCadastro(null));
+    $('#btn-vazio-novo').addEventListener('click', () => abrirCadastro(null));
+    $('#btn-tema').addEventListener('click', alternarTema);
+    $('#btn-cancelar').addEventListener('click', mostrarHome);
+    $('#btn-salvar').addEventListener('click', salvar);
+
+    // Pesquisa em tempo real (debounce curto para fluidez).
+    let temporizador = null;
+    const campoPesquisa = $('#campo-pesquisa');
+
+    campoPesquisa.addEventListener('input', (e) => {
+      fecharHistorico();
+      clearTimeout(temporizador);
+      temporizador = setTimeout(() => {
+        Estado.busca = e.target.value;
+        renderizar();
+      }, 120);
+    });
+
+    // Histórico: abre ao focar o campo vazio.
+    campoPesquisa.addEventListener('focus', () => {
+      if (!campoPesquisa.value.trim()) abrirHistorico();
+    });
+
+    campoPesquisa.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        registrarBusca(campoPesquisa.value);
+        fecharHistorico();
+      }
+    });
+
+    // mousedown (e não click) para agir antes do blur fechar a caixa.
+    $('#historico-busca').addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      const item = e.target.closest('[data-termo]');
+      if (item) {
+        campoPesquisa.value = item.dataset.termo;
+        Estado.busca = item.dataset.termo;
+        registrarBusca(item.dataset.termo);
+        fecharHistorico();
+        renderizar();
+        campoPesquisa.focus();
+        return;
+      }
+      if (e.target.closest('[data-acao="limpar"]')) limparHistorico();
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.busca-wrapper')) fecharHistorico();
+    });
+
+    // Filtros rápidos por tipo.
+    $$('.chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        $$('.chip').forEach(c => c.classList.remove('ativo'));
+        chip.classList.add('ativo');
+        Estado.filtroTipo = chip.dataset.filtro;
+        renderizar();
+      });
+    });
+
+    // Filtro por categoria — reinicia o nível seguinte da hierarquia.
+    $('#filtro-categoria').addEventListener('change', (e) => {
+      Estado.filtroCategoria = e.target.value;
+      Estado.filtroSubcategoria = '';
+      atualizarSubcategorias();
+      renderizar();
+    });
+
+    // Filtro por subcategoria.
+    $('#filtro-subcategoria').addEventListener('change', (e) => {
+      Estado.filtroSubcategoria = e.target.value;
+      renderizar();
+    });
+
+    // Formulário: categoria digitada refiltra as sugestões de subcategoria.
+    $('#campo-categoria').addEventListener('input', () => {
+      atualizarSugestoesSubcategoria();
+      atualizarPreviaCaminho();
+    });
+    $('#campo-subcategoria').addEventListener('input', atualizarPreviaCaminho);
+    $('#campo-descricao').addEventListener('input', atualizarPreviaCaminho);
+
+    // Tipo no formulário (bloqueado durante edição).
+    $$('#seg-tipo .seg-opcao').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (Estado.editandoId) return;
+        definirTipoForm(btn.dataset.tipo);
+      });
+    });
+
+    // Contador de caracteres do texto.
+    $('#campo-texto').addEventListener('input', atualizarContagemTexto);
+
+    // Delegação de eventos dos cards.
+    $('#lista-cards').addEventListener('click', (e) => {
+      const botao = e.target.closest('[data-acao]');
+      if (!botao) return;
+
+      const card = botao.closest('.card');
+      const registro = Estado.registros.find(r => r.id === card.dataset.id);
+      if (!registro) return;
+
+      switch (botao.dataset.acao) {
+        case 'copiar':
+          copiarTexto(registro);
+          registrarBusca(Estado.busca); // busca que levou a um uso real
+          break;
+        case 'favoritar': alternarFavorito(registro.id); break;
+        case 'expandir':  alternarExpandido(registro.id); break;
+        case 'editar':    abrirCadastro(registro); break;
+        case 'imprimir':  imprimirRegistro(registro); break;
+        case 'excluir':   pedirExclusao(registro); break;
+      }
+    });
+
+    // Modal de confirmação.
+    $('#modal-cancelar').addEventListener('click', fecharModal);
+    $('#modal-confirmar-btn').addEventListener('click', () => {
+      const acao = Estado.confirmarAcao;
+      fecharModal();
+      if (acao) acao();
+    });
+    $('#modal-confirmar').addEventListener('click', (e) => {
+      if (e.target === $('#modal-confirmar')) fecharModal();
+    });
+
+    // Atalhos de teclado.
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        mostrarHome();
+        $('#campo-pesquisa').focus();
+        $('#campo-pesquisa').select();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        abrirCadastro(null);
+      }
+      if (e.key === 'Escape') {
+        if (!$('#historico-busca').hidden) fecharHistorico();
+        else if (!$('#modal-confirmar').hidden) fecharModal();
+        else if (!$('#view-cadastro').hidden) mostrarHome();
+      }
+    });
+  }
+
+  /* ----------------------------------------------------------
+   * Inicialização
+   * -------------------------------------------------------- */
+
+  document.addEventListener('DOMContentLoaded', () => {
+    carregarPreferencias();
+    registrarEventos();
+    carregarRegistros();
+  });
+})();
+</script>
+
+</body>
+</html>
